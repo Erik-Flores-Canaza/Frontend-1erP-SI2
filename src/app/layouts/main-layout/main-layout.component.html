@@ -1,0 +1,104 @@
+<div class="app-shell flex h-screen overflow-hidden bg-app-bg">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside
+    class="sidebar flex flex-col bg-app-card border-r border-app-border transition-all duration-300 ease-in-out flex-shrink-0"
+    [class.w-sidebar]="!collapsed()"
+    [class.w-sidebar-sm]="collapsed()"
+    style="min-height: 0;"
+  >
+    <!-- Logo / Brand -->
+    <div class="flex items-center gap-3 px-4 border-b border-app-border"
+         style="height: var(--header-h);">
+      <span class="flex-shrink-0 w-9 h-9 rounded-lg bg-accent flex items-center justify-center">
+        <span class="material-icons text-white text-xl">directions_car</span>
+      </span>
+      @if (!collapsed()) {
+        <div class="overflow-hidden">
+          <div class="font-bold text-app-text leading-tight truncate">EmergVial</div>
+          <div class="text-xs text-app-muted truncate">Panel de taller</div>
+        </div>
+      }
+    </div>
+
+    <!-- Nav items -->
+    <nav class="flex-1 py-4 overflow-y-auto">
+      @for (item of navItems; track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="nav-active"
+          [matTooltip]="collapsed() ? item.label : ''"
+          matTooltipPosition="right"
+          class="nav-item flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg
+                 text-app-muted hover:text-app-text hover:bg-app-elevated
+                 transition-colors duration-150 mb-0.5 no-underline"
+        >
+          <span class="material-icons text-xl flex-shrink-0">{{ item.icon }}</span>
+          @if (!collapsed()) {
+            <span class="text-sm font-medium truncate">{{ item.label }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <!-- Collapse toggle -->
+    <div class="border-t border-app-border p-2">
+      <button
+        (click)="toggleSidebar()"
+        class="w-full flex items-center justify-center gap-2 py-2 rounded-lg
+               text-app-muted hover:text-app-text hover:bg-app-elevated
+               transition-colors duration-150"
+        [matTooltip]="collapsed() ? 'Expandir sidebar' : ''"
+        matTooltipPosition="right"
+      >
+        <span class="material-icons text-xl">
+          {{ collapsed() ? 'chevron_right' : 'chevron_left' }}
+        </span>
+        @if (!collapsed()) {
+          <span class="text-xs font-medium">Colapsar</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main area ─────────────────────────────────────────────────────────── -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Header -->
+    <header
+      class="flex items-center justify-between px-6 bg-app-card border-b border-app-border flex-shrink-0"
+      style="height: var(--header-h);"
+    >
+      <!-- Taller name -->
+      <div class="flex items-center gap-2">
+        <span class="material-icons text-accent text-lg">store</span>
+        <span class="font-semibold text-app-text text-sm">{{ tallerNombre() }}</span>
+        <span class="w-1 h-1 rounded-full bg-app-border mx-1"></span>
+        <span class="text-xs text-app-muted">Admin de taller</span>
+      </div>
+
+      <!-- User + logout -->
+      <div class="flex items-center gap-4">
+        <div class="text-right hidden sm:block">
+          <div class="text-sm font-medium text-app-text">{{ user()?.nombre_completo }}</div>
+          <div class="text-xs text-app-muted">{{ user()?.correo }}</div>
+        </div>
+        <button
+          (click)="logout()"
+          class="flex items-center gap-1.5 text-app-muted hover:text-danger
+                 px-3 py-2 rounded-lg hover:bg-danger/10 transition-colors duration-150"
+          matTooltip="Cerrar sesión"
+        >
+          <span class="material-icons text-xl">logout</span>
+          <span class="text-sm font-medium hidden sm:inline">Salir</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="flex-1 overflow-y-auto p-6">
+      <router-outlet />
+    </main>
+
+  </div>
+</div>

@@ -1,0 +1,205 @@
+<div>
+
+  <!-- Page header -->
+  <div class="mb-8">
+    <h1 class="page-title">Turnos</h1>
+    <p class="text-app-muted text-sm mt-1">Asigna y consulta los turnos de cada técnico</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Panel izquierdo: lista de técnicos -->
+    <div class="lg:col-span-1">
+      <div class="card p-0 overflow-hidden">
+        <div class="px-4 py-3 border-b border-app-border">
+          <h2 class="section-title text-sm">Seleccionar técnico</h2>
+        </div>
+
+        @if (loadingTecnicos()) {
+          <div class="p-4 space-y-3">
+            @for (_ of [1,2,3]; track $index) {
+              <div class="flex items-center gap-3">
+                <app-skeleton height="2.25rem" width="2.25rem" radius="50%"/>
+                <app-skeleton height="0.875rem" width="70%"/>
+              </div>
+            }
+          </div>
+
+        } @else if (tecnicos().length === 0) {
+          <div class="py-10 px-4 text-center">
+            <span class="material-icons text-app-faint text-3xl mb-2 block">engineering</span>
+            <p class="text-app-muted text-sm">No hay técnicos en tu taller</p>
+          </div>
+
+        } @else {
+          <div class="divide-y divide-app-subtle">
+            @for (t of tecnicos(); track t.id) {
+              <button
+                (click)="selectTecnico(t)"
+                class="w-full flex items-center gap-3 px-4 py-3 text-left
+                       hover:bg-app-elevated transition-colors duration-150"
+                [class.bg-app-elevated]="selectedTecnico()?.id === t.id"
+                [class.border-l-2]="selectedTecnico()?.id === t.id"
+                [class.border-accent]="selectedTecnico()?.id === t.id"
+              >
+                <div class="w-9 h-9 rounded-full bg-app-elevated flex items-center justify-center flex-shrink-0"
+                     [class.bg-accent]="selectedTecnico()?.id === t.id">
+                  <span class="text-sm font-bold"
+                        [class.text-white]="selectedTecnico()?.id === t.id"
+                        [class.text-app-muted]="selectedTecnico()?.id !== t.id">
+                    {{ t.usuario.nombre_completo.charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+                <div class="min-w-0">
+                  <p class="font-medium text-sm text-app-text truncate">{{ t.usuario.nombre_completo }}</p>
+                  <p class="text-xs" [class]="t.disponible ? 'text-success' : 'text-app-faint'">
+                    {{ t.disponible ? 'Disponible' : 'No disponible' }}
+                  </p>
+                </div>
+                @if (selectedTecnico()?.id === t.id) {
+                  <span class="material-icons text-accent text-base ml-auto">chevron_right</span>
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Panel derecho: turnos del técnico seleccionado -->
+    <div class="lg:col-span-2">
+
+      @if (!selectedTecnico()) {
+        <div class="card flex flex-col items-center justify-center py-20">
+          <span class="material-icons text-app-faint text-5xl mb-4">calendar_month</span>
+          <p class="text-app-muted text-center">Selecciona un técnico para ver y gestionar sus turnos</p>
+        </div>
+
+      } @else {
+
+        <!-- Header del técnico seleccionado -->
+        <div class="card mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+              <span class="font-bold text-white">
+                {{ selectedTecnico()!.usuario.nombre_completo.charAt(0).toUpperCase() }}
+              </span>
+            </div>
+            <div>
+              <p class="font-semibold text-app-text">{{ selectedTecnico()!.usuario.nombre_completo }}</p>
+              <p class="text-xs text-app-muted">{{ turnos().length }} turnos registrados</p>
+            </div>
+          </div>
+          <button (click)="showForm.update(v => !v)" class="btn-primary flex items-center gap-2">
+            <span class="material-icons text-base">{{ showForm() ? 'close' : 'add' }}</span>
+            {{ showForm() ? 'Cancelar' : 'Agregar turno' }}
+          </button>
+        </div>
+
+        <!-- Formulario nuevo turno -->
+        @if (showForm()) {
+          <div class="card mb-4 border-accent/30">
+            <h3 class="section-title text-base mb-4 flex items-center gap-2">
+              <span class="material-icons text-accent text-base">add_circle</span> Nuevo turno
+            </h3>
+            <form [formGroup]="turnoForm" (ngSubmit)="saveTurno()" class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="input-label">Fecha</label>
+                <input type="date" formControlName="fecha_turno"
+                       [min]="today" class="input-field font-mono text-sm">
+              </div>
+              <div>
+                <label class="input-label">Hora inicio</label>
+                <input type="time" formControlName="hora_inicio" class="input-field font-mono text-sm">
+              </div>
+              <div>
+                <label class="input-label">Hora fin</label>
+                <input type="time" formControlName="hora_fin" class="input-field font-mono text-sm">
+              </div>
+              <div class="col-span-3 flex justify-end">
+                <button type="submit" [disabled]="turnoForm.invalid || saving()"
+                        class="btn-primary flex items-center gap-2">
+                  @if (saving()) {
+                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                  } @else {
+                    <span class="material-icons text-base">save</span>
+                  }
+                  Guardar turno
+                </button>
+              </div>
+            </form>
+          </div>
+        }
+
+        <!-- Lista de turnos -->
+        <div class="card p-0 overflow-hidden">
+          @if (loadingTurnos()) {
+            <div class="p-6 space-y-3">
+              @for (_ of [1,2,3]; track $index) {
+                <app-skeleton height="3.5rem" radius="8px"/>
+              }
+            </div>
+
+          } @else if (turnos().length === 0) {
+            <div class="py-16 text-center">
+              <span class="material-icons text-app-faint text-4xl mb-3 block">event_busy</span>
+              <p class="text-app-muted">No hay turnos registrados para este técnico</p>
+            </div>
+
+          } @else {
+            <div class="px-4 py-3 border-b border-app-border flex items-center gap-2">
+              <span class="material-icons text-sm text-app-muted">schedule</span>
+              <span class="text-xs text-app-muted font-medium uppercase tracking-wider">Todos los turnos</span>
+            </div>
+
+            <div class="divide-y divide-app-subtle">
+              @for (turno of turnos(); track turno.id) {
+                <div class="flex items-center gap-4 px-4 py-3.5"
+                     [class.opacity-50]="isPast(turno.fecha_turno)">
+
+                  <!-- Fecha icon -->
+                  <div class="w-12 h-12 rounded-lg flex flex-col items-center justify-center flex-shrink-0"
+                       [class]="isToday(turno.fecha_turno) ? 'bg-accent text-white' :
+                                 isPast(turno.fecha_turno) ? 'bg-app-elevated text-app-faint' :
+                                 'bg-app-elevated text-app-muted'">
+                    <span class="text-xs font-bold leading-none">
+                      {{ turno.fecha_turno | date:'dd' }}
+                    </span>
+                    <span class="text-[10px] uppercase leading-none">
+                      {{ turno.fecha_turno | date:'MMM' }}
+                    </span>
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-mono text-sm text-app-text">
+                        {{ formatHora(turno.hora_inicio) }} — {{ formatHora(turno.hora_fin) }}
+                      </span>
+                      @if (turno.en_servicio) {
+                        <span class="badge-warning">En servicio</span>
+                      }
+                      @if (isToday(turno.fecha_turno)) {
+                        <span class="badge-success">Hoy</span>
+                      }
+                    </div>
+                    <p class="text-xs text-app-muted mt-0.5">
+                      {{ turno.fecha_turno | date:'EEEE, d MMMM yyyy':'':'es' }}
+                    </p>
+                  </div>
+
+                  @if (isPast(turno.fecha_turno)) {
+                    <span class="text-xs text-app-faint">Pasado</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+      }
+    </div>
+  </div>
+</div>

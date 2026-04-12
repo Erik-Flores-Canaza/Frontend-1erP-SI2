@@ -1,0 +1,13 @@
+.nav-active {
+  color: var(--app-text) !important;
+  background-color: var(--app-accent) !important;
+  color: white !important;
+}
+
+.nav-active .material-icons {
+  color: white !important;
+}
+
+.nav-item {
+  text-decoration: none;
+}

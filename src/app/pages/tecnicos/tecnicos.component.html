@@ -1,0 +1,206 @@
+<div class="relative">
+
+  <!-- Page header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="page-title">Técnicos</h1>
+      <p class="text-app-muted text-sm mt-1">
+        Gestiona el equipo de técnicos de tu taller
+      </p>
+    </div>
+    <button (click)="openAdd()" class="btn-primary flex items-center gap-2">
+      <span class="material-icons text-base">person_add</span> Agregar técnico
+    </button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card p-0 overflow-hidden">
+    @if (loading()) {
+      <div class="p-6 space-y-4">
+        @for (_ of [1,2,3]; track $index) {
+          <div class="flex items-center gap-4">
+            <app-skeleton height="2.5rem" width="2.5rem" radius="50%"/>
+            <div class="flex-1 space-y-2">
+              <app-skeleton height="0.875rem" width="35%"/>
+              <app-skeleton height="0.75rem" width="50%"/>
+            </div>
+            <app-skeleton height="1.5rem" width="5rem" radius="999px"/>
+            <app-skeleton height="2rem" width="5rem" radius="6px"/>
+          </div>
+        }
+      </div>
+
+    } @else if (tecnicos().length === 0) {
+      <!-- Empty state -->
+      <div class="flex flex-col items-center justify-center py-20 px-4">
+        <div class="w-16 h-16 rounded-full bg-app-elevated flex items-center justify-center mb-4">
+          <span class="material-icons text-app-faint text-3xl">engineering</span>
+        </div>
+        <h3 class="font-semibold text-app-text mb-2">No hay técnicos registrados</h3>
+        <p class="text-app-muted text-sm text-center max-w-xs mb-6">
+          Agrega los técnicos de tu taller para poder asignar órdenes de servicio.
+        </p>
+        <button (click)="openAdd()" class="btn-primary flex items-center gap-2">
+          <span class="material-icons text-base">person_add</span> Agregar primer técnico
+        </button>
+      </div>
+
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Técnico</th>
+            <th>Contacto</th>
+            <th>Estado</th>
+            <th class="text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tecnicos(); track t.id) {
+            <tr>
+              <!-- Nombre -->
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-full bg-app-elevated flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm font-bold text-app-muted">
+                      {{ t.usuario.nombre_completo.charAt(0).toUpperCase() }}
+                    </span>
+                  </div>
+                  <div>
+                    <div class="font-medium text-app-text">{{ t.usuario.nombre_completo }}</div>
+                    <div class="text-xs text-app-muted">{{ t.usuario.correo }}</div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Teléfono -->
+              <td class="text-app-muted text-sm">{{ t.usuario.telefono ?? '—' }}</td>
+
+              <!-- Disponible -->
+              <td>
+                <button
+                  (click)="toggleDisponible(t)"
+                  [class]="t.disponible ? 'badge-success' : 'badge-neutral'"
+                  class="cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <span class="material-icons text-xs">
+                    {{ t.disponible ? 'check_circle' : 'radio_button_unchecked' }}
+                  </span>
+                  {{ t.disponible ? 'Disponible' : 'No disponible' }}
+                </button>
+              </td>
+
+              <!-- Acciones -->
+              <td class="text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    (click)="openEdit(t)"
+                    class="btn-ghost p-2"
+                    title="Editar"
+                  >
+                    <span class="material-icons text-base">edit</span>
+                  </button>
+                  <button
+                    (click)="confirmDelete(t)"
+                    [disabled]="deleting() === t.id"
+                    class="btn-ghost p-2 hover:text-danger hover:bg-danger/10"
+                    title="Eliminar"
+                  >
+                    @if (deleting() === t.id) {
+                      <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                    } @else {
+                      <span class="material-icons text-base">delete</span>
+                    }
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <!-- Panel lateral: Add / Edit -->
+  @if (panelOpen()) {
+    <!-- Overlay -->
+    <div class="fixed inset-0 bg-black/60 z-40" (click)="closePanel()"></div>
+
+    <!-- Drawer -->
+    <div class="fixed top-0 right-0 h-full w-full max-w-md bg-app-card border-l border-app-border
+                z-50 shadow-2xl flex flex-col">
+
+      <!-- Header del panel -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-app-border">
+        <h2 class="text-lg font-bold text-app-text">
+          {{ editing() ? 'Editar técnico' : 'Nuevo técnico' }}
+        </h2>
+        <button (click)="closePanel()" class="btn-ghost p-2">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <!-- Formulario -->
+      <form [formGroup]="form" (ngSubmit)="saveForm()" class="flex-1 overflow-y-auto p-6 space-y-5">
+
+        <div>
+          <label class="input-label">Nombre completo *</label>
+          <input formControlName="nombre_completo" class="input-field" placeholder="Juan Pérez">
+          @if (nombre.invalid && nombre.touched) {
+            <p class="text-danger text-xs mt-1">El nombre es requerido.</p>
+          }
+        </div>
+
+        <div>
+          <label class="input-label">Correo electrónico *</label>
+          <input type="email" formControlName="correo" class="input-field"
+                 [readonly]="!!editing()"
+                 placeholder="tecnico@taller.com">
+          @if (correo.invalid && correo.touched) {
+            <p class="text-danger text-xs mt-1">Ingresa un correo válido.</p>
+          }
+        </div>
+
+        @if (!editing()) {
+          <div>
+            <label class="input-label">Contraseña inicial *</label>
+            <input type="password" formControlName="contrasena" class="input-field" placeholder="••••••••">
+            @if (contrasena.invalid && contrasena.touched) {
+              <p class="text-danger text-xs mt-1">Mínimo 6 caracteres.</p>
+            }
+          </div>
+        }
+
+        <div>
+          <label class="input-label">Teléfono</label>
+          <input formControlName="telefono" class="input-field" placeholder="+591 70000000">
+        </div>
+
+      </form>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-app-border">
+        <button type="button" (click)="closePanel()" class="btn-ghost">Cancelar</button>
+        <button
+          (click)="saveForm()"
+          [disabled]="form.invalid || saving()"
+          class="btn-primary flex items-center gap-2"
+        >
+          @if (saving()) {
+            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+          } @else {
+            <span class="material-icons text-base">{{ editing() ? 'save' : 'person_add' }}</span>
+          }
+          {{ editing() ? 'Guardar cambios' : 'Crear técnico' }}
+        </button>
+      </div>
+    </div>
+  }
+
+</div>

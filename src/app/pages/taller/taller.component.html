@@ -1,0 +1,167 @@
+<div class="max-w-4xl">
+
+  <!-- Page header -->
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="page-title">{{ sinTaller() ? 'Crear mi taller' : 'Mi Taller' }}</h1>
+      <p class="text-app-muted text-sm mt-1">
+        {{ sinTaller() ? 'Registra los datos de tu taller para comenzar a recibir solicitudes'
+                       : 'Gestiona la información y servicios de tu taller' }}
+      </p>
+    </div>
+    @if (!editMode() && !loading() && !sinTaller()) {
+      <button (click)="editMode.set(true)" class="btn-primary flex items-center gap-2">
+        <span class="material-icons text-base">edit</span> Editar
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="card mb-4 space-y-4">
+      <app-skeleton height="1.25rem" width="40%"/>
+      <app-skeleton height="1rem"    width="70%"/>
+      <app-skeleton height="1rem"    width="55%"/>
+      <app-skeleton height="1rem"    width="60%"/>
+    </div>
+  } @else {
+
+    <!-- Información del taller -->
+    <div class="card mb-6">
+      <h2 class="section-title mb-5 flex items-center gap-2">
+        <span class="material-icons text-accent">store</span> Información general
+      </h2>
+
+      <form [formGroup]="form" (ngSubmit)="save()" class="space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+          <!-- Nombre -->
+          <div class="sm:col-span-2">
+            <label class="input-label">Nombre del taller</label>
+            @if (editMode()) {
+              <input formControlName="nombre" class="input-field" placeholder="Taller Mecánico Central">
+            } @else {
+              <p class="text-app-text font-medium py-2">{{ taller()?.nombre }}</p>
+            }
+          </div>
+
+          <!-- Dirección -->
+          <div class="sm:col-span-2">
+            <label class="input-label">Dirección</label>
+            @if (editMode()) {
+              <input formControlName="direccion" class="input-field" placeholder="Av. Principal 123, Ciudad">
+            } @else {
+              <p class="text-app-text py-2">{{ taller()?.direccion ?? '—' }}</p>
+            }
+          </div>
+
+          <!-- Latitud -->
+          <div>
+            <label class="input-label">Latitud</label>
+            @if (editMode()) {
+              <input type="number" step="any" formControlName="latitud" class="input-field font-mono" placeholder="-17.3895">
+            } @else {
+              <p class="text-app-text font-mono py-2">{{ taller()?.latitud ?? '—' }}</p>
+            }
+          </div>
+
+          <!-- Longitud -->
+          <div>
+            <label class="input-label">Longitud</label>
+            @if (editMode()) {
+              <input type="number" step="any" formControlName="longitud" class="input-field font-mono" placeholder="-66.1568">
+            } @else {
+              <p class="text-app-text font-mono py-2">{{ taller()?.longitud ?? '—' }}</p>
+            }
+          </div>
+
+          <!-- Disponible toggle -->
+          <div class="sm:col-span-2">
+            <label class="input-label">Disponibilidad</label>
+            @if (editMode()) {
+              <label class="flex items-center gap-3 cursor-pointer mt-1">
+                <input type="checkbox" formControlName="disponible" class="sr-only peer">
+                <div class="relative w-11 h-6 bg-app-border rounded-full peer
+                            peer-checked:bg-success transition-colors duration-200">
+                  <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full
+                              transition-transform duration-200 peer-checked:translate-x-5"></div>
+                </div>
+                <span class="text-sm text-app-text">
+                  {{ form.get('disponible')?.value ? 'Taller disponible para recibir solicitudes' : 'Taller no disponible' }}
+                </span>
+              </label>
+            } @else {
+              <span [class]="taller()?.disponible ? 'badge-success' : 'badge-warning'" class="mt-1">
+                {{ taller()?.disponible ? 'Disponible' : 'No disponible' }}
+              </span>
+            }
+          </div>
+        </div>
+
+        @if (editMode()) {
+          <div class="flex justify-end gap-3 pt-2 border-t border-app-border">
+            @if (!sinTaller()) {
+              <button type="button" (click)="cancelEdit()" class="btn-ghost">Cancelar</button>
+            }
+            <button type="submit" [disabled]="form.invalid || saving()" class="btn-primary flex items-center gap-2">
+              @if (saving()) {
+                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+              } @else {
+                <span class="material-icons text-base">{{ sinTaller() ? 'add_business' : 'save' }}</span>
+              }
+              {{ sinTaller() ? 'Crear taller' : 'Guardar cambios' }}
+            </button>
+          </div>
+        }
+      </form>
+    </div>
+
+    <!-- Servicios -->
+    <div class="card">
+      <h2 class="section-title mb-1 flex items-center gap-2">
+        <span class="material-icons text-accent-orange">build</span> Servicios ofrecidos
+      </h2>
+      <p class="text-app-muted text-sm mb-5">Activa los tipos de servicio que ofrece tu taller</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        @for (tipo of tiposConfig; track tipo.valor) {
+          <div class="flex items-center justify-between p-4 rounded-lg border transition-colors duration-150"
+               [class]="isServicioActivo(tipo.valor)
+                 ? 'border-success/40 bg-success/5'
+                 : 'border-app-border bg-app-elevated'">
+            <div class="flex items-center gap-3">
+              <span class="material-icons text-xl"
+                    [class]="isServicioActivo(tipo.valor) ? 'text-success' : 'text-app-faint'">
+                {{ tipo.icono }}
+              </span>
+              <span class="font-medium text-sm"
+                    [class]="isServicioActivo(tipo.valor) ? 'text-app-text' : 'text-app-muted'">
+                {{ tipo.etiqueta }}
+              </span>
+            </div>
+            <button
+              (click)="toggleServicio(tipo.valor)"
+              [disabled]="savingServicio() === tipo.valor || isServicioActivo(tipo.valor)"
+              class="relative w-11 h-6 rounded-full transition-colors duration-200
+                     disabled:cursor-not-allowed"
+              [class]="isServicioActivo(tipo.valor) ? 'bg-success' : 'bg-app-border hover:bg-app-muted'"
+            >
+              @if (savingServicio() === tipo.valor) {
+                <svg class="animate-spin h-4 w-4 absolute inset-1 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+              } @else {
+                <div class="absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform duration-200"
+                     [class]="isServicioActivo(tipo.valor) ? 'left-5' : 'left-0.5'">
+                </div>
+              }
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

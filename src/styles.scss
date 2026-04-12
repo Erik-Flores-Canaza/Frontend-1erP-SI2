@@ -1,0 +1,166 @@
+// ── @use must come before everything else ───────────────────────────────────
+@use '@angular/material' as mat;
+
+// ── Tailwind ────────────────────────────────────────────────────────────────
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$red-palette,
+    ),
+    density: 0,
+  ));
+}
+
+// ── Design tokens ────────────────────────────────────────────────────────────
+:root {
+  --app-bg:          #0D1117;
+  --app-card:        #161B22;
+  --app-elevated:    #1C2128;
+  --app-border:      #30363D;
+  --app-subtle:      #21262D;
+  --app-accent:      #E63946;
+  --app-accent-h:    #FF4D5A;
+  --app-orange:      #F4A261;
+  --app-text:        #E6EDF3;
+  --app-muted:       #8B949E;
+  --app-faint:       #484F58;
+  --app-success:     #3FB950;
+  --app-warning:     #D29922;
+  --app-danger:      #F85149;
+  --sidebar-w:       256px;
+  --sidebar-sm:      68px;
+  --header-h:        64px;
+}
+
+// ── Base reset ───────────────────────────────────────────────────────────────
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+// ── Material component overrides ─────────────────────────────────────────────
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: var(--app-card) !important;
+  border: 1px solid var(--app-border);
+  border-radius: 12px !important;
+}
+
+.mdc-snackbar__surface {
+  background-color: var(--app-elevated) !important;
+  border: 1px solid var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+.mdc-snackbar__label {
+  color: var(--app-text) !important;
+}
+
+// ── Utility classes ──────────────────────────────────────────────────────────
+@layer components {
+  .card {
+    @apply bg-app-card border border-app-border rounded-xl p-6;
+  }
+
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-white font-semibold
+           px-4 py-2 rounded-lg transition-colors duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply text-app-muted hover:text-app-text hover:bg-app-elevated
+           px-3 py-2 rounded-lg transition-colors duration-150;
+  }
+
+  .btn-danger {
+    @apply bg-danger/10 hover:bg-danger/20 text-danger border border-danger/30
+           px-4 py-2 rounded-lg transition-colors duration-150 font-medium;
+  }
+
+  .input-field {
+    @apply w-full bg-app-elevated border border-app-border rounded-lg
+           px-4 py-2.5 text-app-text placeholder-app-faint
+           focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent
+           transition-colors duration-150;
+  }
+
+  .input-label {
+    @apply block text-sm font-medium text-app-muted mb-1.5;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           bg-success/15 text-success text-xs font-medium;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           bg-danger/15 text-danger text-xs font-medium;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           bg-warning/15 text-warning text-xs font-medium;
+  }
+
+  .badge-neutral {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           bg-app-elevated text-app-muted text-xs font-medium;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-app-text tracking-tight;
+  }
+
+  .section-title {
+    @apply text-lg font-semibold text-app-text;
+  }
+
+  .divider {
+    @apply border-t border-app-border;
+  }
+
+  // Skeleton loading animation
+  .skeleton {
+    @apply rounded animate-pulse bg-app-elevated;
+  }
+
+  // Table styles
+  .data-table {
+    @apply w-full text-sm;
+
+    th {
+      @apply text-left text-xs font-semibold text-app-muted uppercase tracking-wider
+             py-3 px-4 border-b border-app-border bg-app-elevated;
+    }
+
+    td {
+      @apply py-3.5 px-4 border-b border-app-subtle text-app-text;
+    }
+
+    tr:hover td {
+      @apply bg-app-elevated/50;
+    }
+
+    tr:last-child td {
+      @apply border-b-0;
+    }
+  }
+}
+
+// ── Scrollbar styling ────────────────────────────────────────────────────────
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--app-bg); }
+::-webkit-scrollbar-thumb  { background: var(--app-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--app-muted); }

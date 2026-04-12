@@ -1,0 +1,106 @@
+<div class="min-h-screen bg-app-bg flex items-center justify-center p-4">
+
+  <!-- Background grid pattern -->
+  <div class="absolute inset-0 opacity-[0.03]"
+       style="background-image: linear-gradient(var(--app-border) 1px, transparent 1px),
+                                 linear-gradient(90deg, var(--app-border) 1px, transparent 1px);
+              background-size: 40px 40px;">
+  </div>
+
+  <div class="relative w-full max-w-md">
+
+    <!-- Brand -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent mb-4">
+        <span class="material-icons text-white text-3xl">directions_car</span>
+      </div>
+      <h1 class="text-3xl font-bold text-app-text tracking-tight">EmergVial</h1>
+      <p class="text-app-muted mt-1 text-sm">Panel de administración de taller</p>
+    </div>
+
+    <!-- Card -->
+    <div class="card">
+      <h2 class="text-xl font-semibold text-app-text mb-6">Iniciar sesión</h2>
+
+      <!-- Error alert -->
+      @if (error()) {
+        <div class="flex items-center gap-2 bg-danger/10 border border-danger/30
+                    text-danger text-sm rounded-lg px-4 py-3 mb-5">
+          <span class="material-icons text-base">error_outline</span>
+          {{ error() }}
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5" novalidate>
+
+        <!-- Correo -->
+        <div>
+          <label class="input-label" for="correo">Correo electrónico</label>
+          <input
+            id="correo"
+            type="email"
+            formControlName="correo"
+            class="input-field"
+            placeholder="admin@taller.com"
+            autocomplete="email"
+          >
+          @if (correo.invalid && correo.touched) {
+            <p class="text-danger text-xs mt-1">
+              {{ correo.hasError('required') ? 'El correo es requerido.' : 'Ingresa un correo válido.' }}
+            </p>
+          }
+        </div>
+
+        <!-- Contraseña -->
+        <div>
+          <label class="input-label" for="contrasena">Contraseña</label>
+          <div class="relative">
+            <input
+              id="contrasena"
+              [type]="showPass() ? 'text' : 'password'"
+              formControlName="contrasena"
+              class="input-field pr-12"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            >
+            <button
+              type="button"
+              (click)="showPass.update(v => !v)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-app-faint hover:text-app-muted"
+            >
+              <span class="material-icons text-xl">
+                {{ showPass() ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
+          @if (contrasena.invalid && contrasena.touched) {
+            <p class="text-danger text-xs mt-1">La contraseña debe tener al menos 6 caracteres.</p>
+          }
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          [disabled]="form.invalid || loading()"
+          class="btn-primary w-full py-3 flex items-center justify-center gap-2 mt-2"
+        >
+          @if (loading()) {
+            <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            Verificando...
+          } @else {
+            <span class="material-icons text-lg">login</span>
+            Ingresar al panel
+          }
+        </button>
+
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-app-faint mt-6">
+      Plataforma exclusiva para administradores de taller
+    </p>
+  </div>
+</div>

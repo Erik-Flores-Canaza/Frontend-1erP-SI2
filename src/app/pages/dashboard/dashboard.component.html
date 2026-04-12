@@ -1,0 +1,142 @@
+<!-- Banner: admin sin taller -->
+@if (sinTaller()) {
+  <div class="mb-6 flex items-start gap-4 bg-accent-orange/10 border border-accent-orange/30
+              rounded-xl p-5">
+    <span class="material-icons text-accent-orange text-2xl flex-shrink-0 mt-0.5">store</span>
+    <div class="flex-1">
+      <p class="font-semibold text-app-text mb-1">Aún no tienes un taller registrado</p>
+      <p class="text-sm text-app-muted mb-3">
+        Para gestionar técnicos, turnos y recibir solicitudes, primero debes crear tu taller.
+      </p>
+      <a routerLink="/taller"
+         class="btn-primary inline-flex items-center gap-2 text-sm">
+        <span class="material-icons text-base">add_business</span>
+        Crear mi taller ahora
+      </a>
+    </div>
+  </div>
+}
+
+<!-- Header de bienvenida -->
+<div class="mb-8">
+  <p class="text-app-muted text-sm mb-1">Buenos días,</p>
+  <h1 class="page-title">{{ user()?.nombre_completo }}</h1>
+  @if (taller()) {
+    <p class="text-app-muted mt-1 flex items-center gap-1.5">
+      <span class="material-icons text-base text-accent">store</span>
+      {{ taller()!.nombre }}
+      <span class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium"
+            [class]="taller()!.disponible ? 'badge-success' : 'badge-danger'">
+        {{ taller()!.disponible ? 'Disponible' : 'No disponible' }}
+      </span>
+    </p>
+  }
+</div>
+
+<!-- Stats cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+  @if (loading()) {
+    @for (_ of [1,2,3]; track $index) {
+      <div class="card">
+        <app-skeleton height="0.75rem" width="60%" class="mb-3 block"/>
+        <app-skeleton height="2rem"    width="40%" class="mb-2 block"/>
+        <app-skeleton height="0.75rem" width="80%" class="block"/>
+      </div>
+    }
+  } @else {
+    <!-- Técnicos totales -->
+    <div class="card flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent text-2xl">engineering</span>
+      </div>
+      <div>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Técnicos totales</p>
+        <p class="text-3xl font-bold text-app-text font-mono">{{ totalTecnicos() }}</p>
+        <p class="text-app-muted text-xs mt-1">registrados en el sistema</p>
+      </div>
+    </div>
+
+    <!-- Técnicos disponibles -->
+    <div class="card flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-success text-2xl">check_circle</span>
+      </div>
+      <div>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Disponibles</p>
+        <p class="text-3xl font-bold text-app-text font-mono">{{ tecnicosDisponibles() }}</p>
+        <p class="text-app-muted text-xs mt-1">de {{ totalTecnicos() }} técnicos</p>
+      </div>
+    </div>
+
+    <!-- Servicios activos -->
+    <div class="card flex items-start gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent-orange/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent-orange text-2xl">build</span>
+      </div>
+      <div>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Servicios activos</p>
+        <p class="text-3xl font-bold text-app-text font-mono">{{ serviciosActivos() }}</p>
+        <p class="text-app-muted text-xs mt-1">tipos de servicio ofrecidos</p>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Accesos rápidos -->
+<div class="mb-6">
+  <h2 class="section-title mb-4">Accesos rápidos</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    @for (item of accesosRapidos; track item.route) {
+      <a
+        [routerLink]="item.route"
+        class="card flex items-center gap-4 no-underline cursor-pointer
+               hover:border-app-muted transition-colors duration-150 group"
+      >
+        <div class="w-10 h-10 rounded-lg border flex items-center justify-center flex-shrink-0"
+             [class]="item.color">
+          <span class="material-icons text-xl">{{ item.icon }}</span>
+        </div>
+        <span class="font-medium text-app-text text-sm group-hover:text-white transition-colors">
+          {{ item.label }}
+        </span>
+        <span class="material-icons text-app-faint text-base ml-auto group-hover:text-app-muted">
+          chevron_right
+        </span>
+      </a>
+    }
+  </div>
+</div>
+
+<!-- Estado del taller -->
+@if (!loading() && taller()) {
+  <div class="card">
+    <h2 class="section-title mb-4">Estado del taller</h2>
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div>
+        <span class="text-app-muted">Dirección</span>
+        <p class="text-app-text font-medium mt-0.5">{{ taller()!.direccion ?? '—' }}</p>
+      </div>
+      <div>
+        <span class="text-app-muted">Comisión plataforma</span>
+        <p class="text-app-text font-medium font-mono mt-0.5">{{ taller()!.porcentaje_comision }}%</p>
+      </div>
+      <div>
+        <span class="text-app-muted">Estado</span>
+        <p class="mt-0.5">
+          <span [class]="taller()!.activo ? 'badge-success' : 'badge-danger'">
+            {{ taller()!.activo ? 'Activo' : 'Inactivo' }}
+          </span>
+        </p>
+      </div>
+      <div>
+        <span class="text-app-muted">Disponibilidad</span>
+        <p class="mt-0.5">
+          <span [class]="taller()!.disponible ? 'badge-success' : 'badge-warning'">
+            {{ taller()!.disponible ? 'Disponible' : 'No disponible' }}
+          </span>
+        </p>
+      </div>
+    </div>
+  </div>
+}
