@@ -6,6 +6,7 @@ import { TallerService } from '../../core/services/taller.service';
 import { TecnicoService } from '../../core/services/tecnico.service';
 import { ToastService } from '../../core/services/toast.service';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { PhoneInputComponent } from '../../shared/components/phone-input/phone-input.component';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -15,7 +16,7 @@ import { Tecnico } from '../../core/models/tecnico.model';
 @Component({
   selector: 'app-tecnicos',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SkeletonComponent],
+  imports: [CommonModule, ReactiveFormsModule, SkeletonComponent, PhoneInputComponent],
   templateUrl: './tecnicos.component.html',
 })
 export class TecnicosComponent implements OnInit {
@@ -50,8 +51,9 @@ export class TecnicosComponent implements OnInit {
     if (t) this.loadTecnicos(t.id);
     else {
       this.tallerSvc.loadMyTaller().subscribe({
-        next: t => this.loadTecnicos(t.id),
-        error: () => this.loading.set(false),
+        next:     t  => this.loadTecnicos(t.id),
+        error:    () => this.loading.set(false),
+        complete: () => { if (!this.taller()) this.loading.set(false); },
       });
     }
   }

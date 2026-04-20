@@ -1,0 +1,281 @@
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="page-title">Órdenes activas</h1>
+    <p class="text-app-muted text-sm mt-1">Solicitudes aceptadas — asigna técnico y gestiona el estado</p>
+  </div>
+  <button (click)="refrescar()" class="btn-ghost flex items-center gap-1.5 text-sm"
+          matTooltip="Recargar">
+    <span class="material-icons text-base">refresh</span>
+  </button>
+</div>
+
+<!-- Skeletons -->
+@if (loading()) {
+  <div class="space-y-4">
+    @for (_ of [1,2,3]; track $index) {
+      <div class="card space-y-3">
+        <div class="flex items-start justify-between">
+          <app-skeleton height="1.25rem" width="35%"/>
+          <app-skeleton height="1.5rem" width="6rem" class="rounded-full"/>
+        </div>
+        <app-skeleton height="0.875rem" width="70%"/>
+        <app-skeleton height="2.25rem" width="12rem"/>
+      </div>
+    }
+  </div>
+}
+
+<!-- Empty state -->
+@else if (ordenes().length === 0) {
+  <div class="card flex flex-col items-center justify-center py-16 text-center">
+    <div class="w-16 h-16 rounded-full bg-app-elevated flex items-center justify-center mb-4">
+      <span class="material-icons text-app-faint text-3xl">assignment_turned_in</span>
+    </div>
+    <h3 class="font-semibold text-app-text mb-2">Sin órdenes activas</h3>
+    <p class="text-app-muted text-sm max-w-xs">
+      Las solicitudes que aceptes aparecerán aquí para que puedas asignar un técnico.
+    </p>
+  </div>
+}
+
+<!-- Lista de órdenes -->
+@else {
+  <div class="space-y-4">
+    @for (inc of ordenes(); track inc.id) {
+      @let asigAceptada = asignacionAceptada(inc);
+      @let sinTecnico = asignacionAceptadaSinTecnico(inc);
+      @let eMeta = estadoMeta[inc.estado];
+      @let pMeta = prioridadMeta[inc.prioridad];
+      @let cMeta = inc.clasificacion_ia ? clasificacionMeta[inc.clasificacion_ia] : null;
+      @let enAccion = accionando() === inc.id;
+      @let siguienteEstado = ESTADOS_AVANZAR[inc.estado];
+
+      <div class="card" [class.opacity-60]="enAccion">
+
+        <!-- Top: clasificación + badges -->
+        <div class="flex items-start justify-between gap-3 mb-4">
+          <div class="flex items-center gap-3">
+            @if (cMeta) {
+              <div class="w-10 h-10 rounded-xl bg-app-elevated flex items-center justify-center flex-shrink-0">
+                <span class="material-icons text-accent">{{ cMeta.icon }}</span>
+              </div>
+            }
+            <div>
+              <p class="font-semibold text-app-text">{{ cMeta?.label ?? 'Sin clasificar' }}</p>
+              <p class="text-app-faint text-xs">{{ tiempoDesde(inc.creado_en) }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <span [class]="pMeta.css">{{ pMeta.label }}</span>
+            <span [class]="eMeta.css" class="flex items-center gap-1">
+              <span class="material-icons text-xs">{{ eMeta.icon }}</span>
+              {{ eMeta.label }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Resumen -->
+        @if (inc.resumen_ia) {
+          <p class="text-sm text-app-muted mb-3 border-l-2 border-accent/40 pl-3">
+            {{ inc.resumen_ia }}
+          </p>
+        }
+
+        <!-- Evidencias del cliente -->
+        @if (inc.evidencias?.length) {
+          <div class="mb-4">
+            <p class="text-xs text-app-faint font-semibold uppercase tracking-wide mb-2">Evidencias</p>
+            <div class="flex gap-2 flex-wrap">
+              @for (ev of inc.evidencias; track ev.id) {
+                @if (ev.tipo === 'imagen' && ev.archivo_url) {
+                  <a [href]="apiBase + ev.archivo_url" target="_blank"
+                     class="block w-16 h-16 rounded-lg overflow-hidden border border-app-border hover:border-accent transition-colors flex-shrink-0">
+                    <img [src]="apiBase + ev.archivo_url" alt="evidencia"
+                         class="w-full h-full object-cover"/>
+                  </a>
+                } @else if (ev.tipo === 'audio') {
+                  <div class="w-16 h-16 rounded-lg border border-app-border bg-app-elevated flex flex-col items-center justify-center flex-shrink-0">
+                    <span class="material-icons text-accent text-2xl">mic</span>
+                    <span class="text-xs text-app-faint mt-0.5">Audio</span>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Ubicación del cliente -->
+        @if (inc.latitud !== null && inc.longitud !== null) {
+          <div class="flex items-center gap-2 mb-4">
+            <span class="material-icons text-sm text-accent-orange">location_on</span>
+            <a [href]="'https://www.google.com/maps?q=' + inc.latitud + ',' + inc.longitud"
+               target="_blank"
+               class="text-xs text-accent hover:underline">
+              Ver ubicación del cliente en mapa
+            </a>
+          </div>
+        }
+
+        <!-- Técnico asignado -->
+        @if (asigAceptada?.tecnico_id) {
+          <div class="flex items-center gap-2 mb-4 bg-success/5 border border-success/20 rounded-lg px-3 py-2">
+            <span class="material-icons text-success text-base">engineering</span>
+            <span class="text-sm text-success font-medium">
+              Técnico: {{ tecnicoNombre(asigAceptada!.tecnico_id!) }}
+            </span>
+            @if (asigAceptada?.eta_minutos) {
+              <span class="text-xs text-app-muted ml-auto">ETA: {{ asigAceptada!.eta_minutos }} min</span>
+            }
+          </div>
+        }
+
+        <!-- Acciones -->
+        <div class="flex items-center gap-3 flex-wrap">
+
+          <!-- Asignar técnico (si aún no hay) -->
+          @if (sinTecnico) {
+            <button
+              (click)="abrirModalTecnico(inc)"
+              class="btn-primary flex items-center gap-2 text-sm"
+            >
+              <span class="material-icons text-base">person_add</span>
+              Asignar técnico
+            </button>
+          }
+
+          <!-- Avanzar estado -->
+          @if (siguienteEstado && asigAceptada?.tecnico_id) {
+            <button
+              (click)="avanzarEstado(inc)"
+              [disabled]="enAccion"
+              class="btn-ghost flex items-center gap-2 text-sm border border-app-border"
+            >
+              @if (enAccion) {
+                <span class="material-icons text-base animate-spin">sync</span>
+              } @else {
+                <span class="material-icons text-base">arrow_forward</span>
+              }
+              Marcar como "{{ estadoMeta[siguienteEstado].label }}"
+            </button>
+          }
+
+          <!-- Incidente completado -->
+          @if (inc.estado === 'atendido') {
+            <span class="flex items-center gap-1.5 text-success text-sm font-medium">
+              <span class="material-icons text-base">verified</span>
+              Servicio completado
+            </span>
+          }
+
+        </div>
+      </div>
+    }
+  </div>
+}
+
+<!-- ── Modal: Asignar técnico ──────────────────────────────────────────────── -->
+@if (modalAbierto()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+       (click)="cerrarModal()">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+    <!-- Panel -->
+    <div class="relative bg-app-card border border-app-border rounded-2xl w-full max-w-md shadow-2xl"
+         (click)="$event.stopPropagation()">
+
+      <!-- Header del modal -->
+      <div class="flex items-center justify-between p-5 border-b border-app-border">
+        <div>
+          <h3 class="font-bold text-app-text">Asignar técnico</h3>
+          @if (ordenSeleccionada()?.latitud !== null) {
+            <p class="text-xs text-app-muted mt-0.5 flex items-center gap-1">
+              <span class="material-icons text-xs text-accent">location_on</span>
+              Distancias calculadas desde la ubicación del cliente
+            </p>
+          } @else {
+            <p class="text-xs text-app-muted mt-0.5">Selecciona un técnico disponible para esta orden</p>
+          }
+        </div>
+        <button (click)="cerrarModal()" class="btn-ghost p-1.5">
+          <span class="material-icons text-xl">close</span>
+        </button>
+      </div>
+
+      <!-- Lista de técnicos -->
+      <div class="p-5 space-y-2 max-h-72 overflow-y-auto">
+        @if (tecnicosDisponibles().length === 0) {
+          <div class="text-center py-8">
+            <span class="material-icons text-app-faint text-3xl">engineering</span>
+            <p class="text-app-muted text-sm mt-2">No hay técnicos disponibles en este momento</p>
+          </div>
+        }
+        @for (tec of tecnicosDisponibles(); track tec.id) {
+          <label
+            class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150"
+            [class.border-accent]="tecnicoElegido() === tec.id"
+            [class.bg-accent\/5]="tecnicoElegido() === tec.id"
+            [class.border-app-border]="tecnicoElegido() !== tec.id"
+            [class.hover:border-app-muted]="tecnicoElegido() !== tec.id"
+          >
+            <input
+              type="radio"
+              name="tecnico"
+              [value]="tec.id"
+              [(ngModel)]="tecnicoElegido"
+              class="accent-accent"
+            />
+            <div class="w-9 h-9 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+              <span class="material-icons text-success text-lg">engineering</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-app-text text-sm truncate">{{ tec.usuario.nombre_completo }}</p>
+              @if (tec.distKm !== null) {
+                <p class="text-xs text-app-muted mt-0.5 flex items-center gap-1">
+                  <span class="material-icons text-xs">near_me</span>
+                  {{ tec.distKm.toFixed(1) }} km — ~{{ tec.eta }} min
+                </p>
+              } @else {
+                <div class="flex items-center gap-2 mt-0.5">
+                  <p class="text-xs text-app-faint flex items-center gap-1">
+                    <span class="material-icons text-xs">location_off</span>
+                    Sin ubicación
+                  </p>
+                  <button
+                    (click)="$event.preventDefault(); notificarUbicacion(tec.id)"
+                    [disabled]="notificandoTecnico() === tec.id"
+                    class="text-xs text-accent hover:underline disabled:opacity-50 flex items-center gap-0.5"
+                    matTooltip="Enviar notificación al técnico para que actualice su ubicación"
+                  >
+                    <span class="material-icons text-xs">notifications</span>
+                    {{ notificandoTecnico() === tec.id ? 'Enviado' : 'Notificar' }}
+                  </button>
+                </div>
+              }
+            </div>
+            <span class="badge-success text-xs flex-shrink-0">Disponible</span>
+          </label>
+        }
+      </div>
+
+      <!-- Footer del modal -->
+      <div class="flex justify-end gap-3 p-5 border-t border-app-border">
+        <button (click)="cerrarModal()" class="btn-ghost text-sm">Cancelar</button>
+        <button
+          (click)="confirmarAsignacion()"
+          [disabled]="!tecnicoElegido() || asignandoTecnico()"
+          class="btn-primary flex items-center gap-2 text-sm"
+        >
+          @if (asignandoTecnico()) {
+            <span class="material-icons text-base animate-spin">sync</span>
+          } @else {
+            <span class="material-icons text-base">check</span>
+          }
+          Confirmar asignación
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

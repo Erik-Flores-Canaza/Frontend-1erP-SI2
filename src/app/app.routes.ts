@@ -34,6 +34,26 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/turnos/turnos.component').then(m => m.TurnosComponent),
       },
+      {
+        path: 'solicitudes',
+        loadComponent: () =>
+          import('./pages/solicitudes/solicitudes.component').then(m => m.SolicitudesComponent),
+      },
+      {
+        path: 'ordenes',
+        loadComponent: () =>
+          import('./pages/ordenes/ordenes.component').then(m => m.OrdenesComponent),
+      },
+      {
+        path: 'notificaciones',
+        loadComponent: () =>
+          import('./pages/notificaciones/notificaciones.component').then(m => m.NotificacionesComponent),
+      },
+      {
+        path: 'historial',
+        loadComponent: () =>
+          import('./pages/historial/historial.component').then(m => m.HistorialComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

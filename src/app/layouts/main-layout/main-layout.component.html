@@ -77,12 +77,31 @@
         <span class="text-xs text-app-muted">Admin de taller</span>
       </div>
 
-      <!-- User + logout -->
-      <div class="flex items-center gap-4">
-        <div class="text-right hidden sm:block">
+      <!-- User + notificaciones + logout -->
+      <div class="flex items-center gap-2">
+        <div class="text-right hidden sm:block mr-2">
           <div class="text-sm font-medium text-app-text">{{ user()?.nombre_completo }}</div>
           <div class="text-xs text-app-muted">{{ user()?.correo }}</div>
         </div>
+
+        <!-- Campana de notificaciones -->
+        <a
+          routerLink="/notificaciones"
+          class="relative flex items-center justify-center w-9 h-9 rounded-lg
+                 text-app-muted hover:text-app-text hover:bg-app-elevated
+                 transition-colors duration-150"
+          matTooltip="Notificaciones"
+        >
+          <span class="material-icons text-xl">notifications</span>
+          @if (noLeidas() > 0) {
+            <span class="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 min-w-[1.1rem]
+                         bg-accent text-white text-[10px] font-bold rounded-full
+                         flex items-center justify-center leading-none px-0.5">
+              {{ noLeidas() > 9 ? '9+' : noLeidas() }}
+            </span>
+          }
+        </a>
+
         <button
           (click)="logout()"
           class="flex items-center gap-1.5 text-app-muted hover:text-danger

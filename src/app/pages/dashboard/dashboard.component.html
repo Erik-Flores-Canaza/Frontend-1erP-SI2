@@ -34,10 +34,10 @@
 </div>
 
 <!-- Stats cards -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
 
   @if (loading()) {
-    @for (_ of [1,2,3]; track $index) {
+    @for (_ of [1,2,3,4]; track $index) {
       <div class="card">
         <app-skeleton height="0.75rem" width="60%" class="mb-3 block"/>
         <app-skeleton height="2rem"    width="40%" class="mb-2 block"/>
@@ -45,39 +45,65 @@
       </div>
     }
   } @else {
-    <!-- Técnicos totales -->
-    <div class="card flex items-start gap-4">
-      <div class="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-        <span class="material-icons text-accent text-2xl">engineering</span>
+    <!-- Solicitudes pendientes — NUEVO -->
+    <a routerLink="/solicitudes"
+       class="card flex items-start gap-3 no-underline cursor-pointer hover:border-accent/40 transition-colors group">
+      <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent text-xl">inbox</span>
       </div>
       <div>
-        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Técnicos totales</p>
-        <p class="text-3xl font-bold text-app-text font-mono">{{ totalTecnicos() }}</p>
-        <p class="text-app-muted text-xs mt-1">registrados en el sistema</p>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Solicitudes</p>
+        <p class="text-2xl font-bold text-app-text font-mono">{{ solicitudesPendientes() }}</p>
+        <p class="text-app-muted text-xs mt-1">pendientes de respuesta</p>
       </div>
-    </div>
+      @if (solicitudesPendientes() > 0) {
+        <span class="ml-auto w-2 h-2 rounded-full bg-accent animate-pulse flex-shrink-0 mt-1"></span>
+      }
+    </a>
 
-    <!-- Técnicos disponibles -->
-    <div class="card flex items-start gap-4">
-      <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
-        <span class="material-icons text-success text-2xl">check_circle</span>
+    <!-- Técnicos totales -->
+    <div class="card flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-success text-xl">engineering</span>
       </div>
       <div>
-        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Disponibles</p>
-        <p class="text-3xl font-bold text-app-text font-mono">{{ tecnicosDisponibles() }}</p>
-        <p class="text-app-muted text-xs mt-1">de {{ totalTecnicos() }} técnicos</p>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Técnicos</p>
+        <p class="text-2xl font-bold text-app-text font-mono">{{ totalTecnicos() }}</p>
+        <p class="text-app-muted text-xs mt-1">{{ tecnicosDisponibles() }} disponibles</p>
       </div>
     </div>
 
     <!-- Servicios activos -->
-    <div class="card flex items-start gap-4">
-      <div class="w-12 h-12 rounded-xl bg-accent-orange/10 flex items-center justify-center flex-shrink-0">
-        <span class="material-icons text-accent-orange text-2xl">build</span>
+    <div class="card flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl bg-accent-orange/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent-orange text-xl">build</span>
       </div>
       <div>
-        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Servicios activos</p>
-        <p class="text-3xl font-bold text-app-text font-mono">{{ serviciosActivos() }}</p>
-        <p class="text-app-muted text-xs mt-1">tipos de servicio ofrecidos</p>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Servicios</p>
+        <p class="text-2xl font-bold text-app-text font-mono">{{ serviciosActivos() }}</p>
+        <p class="text-app-muted text-xs mt-1">tipos habilitados</p>
+      </div>
+    </div>
+
+    <!-- Estado del taller -->
+    <div class="card flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+           [class.bg-success\/10]="taller()?.disponible"
+           [class.bg-danger\/10]="!taller()?.disponible">
+        <span class="material-icons text-xl"
+              [class.text-success]="taller()?.disponible"
+              [class.text-danger]="!taller()?.disponible">
+          {{ taller()?.disponible ? 'check_circle' : 'pause_circle' }}
+        </span>
+      </div>
+      <div>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Taller</p>
+        <p class="text-sm font-bold text-app-text mt-1">
+          <span [class]="taller()?.disponible ? 'badge-success' : 'badge-danger'">
+            {{ taller()?.disponible ? 'Disponible' : 'No disponible' }}
+          </span>
+        </p>
+        <p class="text-app-muted text-xs mt-1.5">estado actual</p>
       </div>
     </div>
   }
@@ -86,7 +112,7 @@
 <!-- Accesos rápidos -->
 <div class="mb-6">
   <h2 class="section-title mb-4">Accesos rápidos</h2>
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
     @for (item of accesosRapidos; track item.route) {
       <a
         [routerLink]="item.route"

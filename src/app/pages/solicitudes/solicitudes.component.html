@@ -1,0 +1,180 @@
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="page-title">Solicitudes entrantes</h1>
+    <p class="text-app-muted text-sm mt-1">
+      Solicitudes pendientes de respuesta asignadas a tu taller
+    </p>
+  </div>
+
+  <!-- Indicador de actualización automática -->
+  <div class="flex items-center gap-3">
+    @if (actualizando()) {
+      <span class="flex items-center gap-1.5 text-xs text-app-muted animate-pulse">
+        <span class="w-1.5 h-1.5 rounded-full bg-accent animate-ping"></span>
+        Actualizando...
+      </span>
+    } @else {
+      <span class="flex items-center gap-1.5 text-xs text-app-faint">
+        <span class="w-1.5 h-1.5 rounded-full bg-success"></span>
+        Auto-actualiza c/15s
+      </span>
+    }
+    <button
+      (click)="refrescar()"
+      class="btn-ghost text-sm flex items-center gap-1.5"
+      [disabled]="actualizando()"
+      matTooltip="Actualizar ahora"
+    >
+      <span class="material-icons text-base" [class.animate-spin]="actualizando()">refresh</span>
+    </button>
+  </div>
+</div>
+
+<!-- Skeletons de carga -->
+@if (loading()) {
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    @for (_ of [1,2,3,4]; track $index) {
+      <div class="card space-y-3">
+        <div class="flex items-start justify-between">
+          <app-skeleton height="1.25rem" width="40%"/>
+          <app-skeleton height="1.5rem" width="5rem" class="rounded-full"/>
+        </div>
+        <app-skeleton height="0.875rem" width="80%"/>
+        <app-skeleton height="0.875rem" width="60%"/>
+        <div class="flex gap-3 pt-2">
+          <app-skeleton height="2.25rem" width="100%"/>
+          <app-skeleton height="2.25rem" width="100%"/>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+<!-- Empty state -->
+@else if (solicitudes().length === 0) {
+  <div class="card flex flex-col items-center justify-center py-16 text-center">
+    <div class="w-16 h-16 rounded-full bg-app-elevated flex items-center justify-center mb-4">
+      <span class="material-icons text-app-faint text-3xl">inbox</span>
+    </div>
+    <h3 class="font-semibold text-app-text mb-2">No hay solicitudes pendientes</h3>
+    <p class="text-app-muted text-sm max-w-xs">
+      Cuando un cliente reporte una emergencia y el sistema asigne tu taller,
+      aparecerá aquí automáticamente.
+    </p>
+    <span class="text-xs text-app-faint mt-4">Se actualiza cada 15 segundos</span>
+  </div>
+}
+
+<!-- Lista de solicitudes -->
+@else {
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    @for (inc of solicitudes(); track inc.id) {
+      @let asig = asignacionPendiente(inc);
+      @let pMeta = prioridadMeta[inc.prioridad];
+      @let cMeta = inc.clasificacion_ia ? clasificacionMeta[inc.clasificacion_ia] : null;
+      @let enAccion = asig ? accionando() === asig.id : false;
+
+      <div class="card flex flex-col gap-4 transition-all duration-200"
+           [class.opacity-60]="enAccion">
+
+        <!-- Top row: clasificación + prioridad -->
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-2">
+            @if (cMeta) {
+              <div class="w-9 h-9 rounded-lg bg-app-elevated flex items-center justify-center flex-shrink-0">
+                <span class="material-icons text-accent text-lg">{{ cMeta.icon }}</span>
+              </div>
+            }
+            <div>
+              <p class="font-semibold text-app-text text-sm leading-tight">
+                {{ cMeta?.label ?? 'Sin clasificar' }}
+              </p>
+              <p class="text-app-faint text-xs">{{ tiempoDesde(inc.creado_en) }}</p>
+            </div>
+          </div>
+          <span [class]="pMeta.css" class="flex-shrink-0 text-xs">
+            {{ pMeta.label }}
+          </span>
+        </div>
+
+        <!-- Resumen IA -->
+        @if (inc.resumen_ia) {
+          <p class="text-sm text-app-muted leading-relaxed border-l-2 border-accent/40 pl-3">
+            {{ inc.resumen_ia }}
+          </p>
+        }
+
+        <!-- Descripción del cliente -->
+        @if (inc.descripcion) {
+          <div class="bg-app-elevated rounded-lg px-3 py-2">
+            <p class="text-xs text-app-faint mb-0.5">Descripción del cliente</p>
+            <p class="text-sm text-app-text">{{ inc.descripcion }}</p>
+          </div>
+        }
+
+        <!-- Metadatos -->
+        @if (inc.confianza_ia !== null) {
+          <div class="flex items-center gap-1.5 text-xs text-app-muted">
+            <span class="material-icons text-base text-app-faint">psychology</span>
+            Confianza IA: <span class="font-mono text-app-text ml-1">{{ (inc.confianza_ia * 100).toFixed(0) }}%</span>
+          </div>
+        }
+
+        <!-- Mapa embebido -->
+        @if (inc.latitud && inc.longitud) {
+          <div class="rounded-xl overflow-hidden border border-app-border relative" style="height: 160px;">
+            <iframe
+              [src]="mapUrl(inc.latitud, inc.longitud)"
+              width="100%"
+              height="100%"
+              style="border:0; display:block;"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              title="Ubicación del cliente"
+            ></iframe>
+            <!-- Botón abrir en Google Maps -->
+            <a
+              [href]="googleMapsUrl(inc.latitud, inc.longitud)"
+              target="_blank"
+              rel="noopener"
+              class="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium
+                     bg-app-bg/90 border border-app-border text-app-text hover:text-accent transition-colors backdrop-blur-sm"
+            >
+              <span class="material-icons text-sm">open_in_new</span>
+              Abrir mapa
+            </a>
+          </div>
+        }
+
+        <!-- Divider -->
+        <div class="divider"></div>
+
+        <!-- Acciones -->
+        <div class="flex gap-3">
+          <button
+            (click)="aceptar(inc)"
+            [disabled]="enAccion"
+            class="flex-1 btn-primary flex items-center justify-center gap-2 text-sm py-2"
+          >
+            @if (enAccion) {
+              <span class="material-icons text-base animate-spin">sync</span>
+            } @else {
+              <span class="material-icons text-base">check_circle</span>
+            }
+            Aceptar
+          </button>
+          <button
+            (click)="rechazar(inc)"
+            [disabled]="enAccion"
+            class="flex-1 btn-danger flex items-center justify-center gap-2 text-sm py-2"
+          >
+            <span class="material-icons text-base">cancel</span>
+            Rechazar
+          </button>
+        </div>
+
+      </div>
+    }
+  </div>
+}

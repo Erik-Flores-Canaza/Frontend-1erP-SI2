@@ -28,6 +28,10 @@ export class TecnicoService {
     return this.http.delete<void>(`${this.api}/tecnicos/${tecnicoId}`);
   }
 
+  solicitarUbicacion(tecnicoId: string) {
+    return this.http.post<void>(`${this.api}/tecnicos/${tecnicoId}/solicitar-ubicacion`, {});
+  }
+
   // ── Turnos ────────────────────────────────────────────────────────────────
   getTurnos(tecnicoId: string) {
     return this.http.get<Turno[]>(`${this.api}/tecnicos/${tecnicoId}/turnos`);

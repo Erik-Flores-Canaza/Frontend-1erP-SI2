@@ -1,4 +1,4 @@
-<div class="max-w-4xl">
+<div>
 
   <!-- Page header -->
   <div class="flex items-center justify-between mb-8">
@@ -54,23 +54,79 @@
             }
           </div>
 
-          <!-- Latitud -->
-          <div>
-            <label class="input-label">Latitud</label>
+          <!-- Ubicación GPS -->
+          <div class="sm:col-span-2">
+            <label class="input-label">Ubicación del taller</label>
             @if (editMode()) {
-              <input type="number" step="any" formControlName="latitud" class="input-field font-mono" placeholder="-17.3895">
-            } @else {
-              <p class="text-app-text font-mono py-2">{{ taller()?.latitud ?? '—' }}</p>
-            }
-          </div>
+              <div class="flex flex-col gap-3">
 
-          <!-- Longitud -->
-          <div>
-            <label class="input-label">Longitud</label>
-            @if (editMode()) {
-              <input type="number" step="any" formControlName="longitud" class="input-field font-mono" placeholder="-66.1568">
+                <!-- Botón geolocalización -->
+                <button type="button"
+                  (click)="usarMiUbicacion()"
+                  [disabled]="geoStatus() === 'loading'"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors w-fit text-sm font-medium"
+                  [class]="geoStatus() === 'success'
+                    ? 'border-success/50 bg-success/10 text-success'
+                    : geoStatus() === 'error'
+                      ? 'border-error/50 bg-error/10 text-error'
+                      : 'border-app-border bg-app-elevated text-app-text hover:border-accent hover:text-accent'"
+                >
+                  @if (geoStatus() === 'loading') {
+                    <svg class="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    Obteniendo ubicación...
+                  } @else if (geoStatus() === 'success') {
+                    <span class="material-icons text-base">check_circle</span>
+                    Ubicación obtenida
+                  } @else if (geoStatus() === 'error') {
+                    <span class="material-icons text-base">location_off</span>
+                    Reintentar
+                  } @else {
+                    <span class="material-icons text-base">my_location</span>
+                    Usar mi ubicación actual
+                  }
+                </button>
+
+                <!-- Coordenadas obtenidas (readonly) -->
+                @if (form.get('latitud')?.value !== null) {
+                  <div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-app-bg border border-app-border text-sm font-mono text-app-muted">
+                    <span class="material-icons text-base text-app-faint">location_on</span>
+                    {{ form.get('latitud')?.value | number:'1.5-5' }},
+                    {{ form.get('longitud')?.value | number:'1.5-5' }}
+                  </div>
+                }
+
+                <!-- Fallback: entrada manual -->
+                <details class="text-sm">
+                  <summary class="cursor-pointer text-app-faint hover:text-app-muted select-none">
+                    Ingresar coordenadas manualmente
+                  </summary>
+                  <div class="grid grid-cols-2 gap-3 mt-2">
+                    <div>
+                      <label class="input-label text-xs">Latitud</label>
+                      <input type="number" step="any" formControlName="latitud"
+                             class="input-field font-mono text-sm" placeholder="-17.3895">
+                    </div>
+                    <div>
+                      <label class="input-label text-xs">Longitud</label>
+                      <input type="number" step="any" formControlName="longitud"
+                             class="input-field font-mono text-sm" placeholder="-66.1568">
+                    </div>
+                  </div>
+                </details>
+
+              </div>
             } @else {
-              <p class="text-app-text font-mono py-2">{{ taller()?.longitud ?? '—' }}</p>
+              @if (taller()?.latitud) {
+                <p class="text-app-text font-mono py-2 flex items-center gap-2">
+                  <span class="material-icons text-base text-app-faint">location_on</span>
+                  {{ taller()?.latitud }}, {{ taller()?.longitud }}
+                </p>
+              } @else {
+                <p class="text-app-muted py-2 italic text-sm">Sin ubicación configurada</p>
+              }
             }
           </div>
 

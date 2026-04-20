@@ -52,8 +52,9 @@ export class TurnosComponent implements OnInit {
     if (t) this.loadTecnicos(t.id);
     else {
       this.tallerSvc.loadMyTaller().subscribe({
-        next: t => this.loadTecnicos(t.id),
-        error: () => this.loadingTecnicos.set(false),
+        next:     t  => this.loadTecnicos(t.id),
+        error:    () => this.loadingTecnicos.set(false),
+        complete: () => { if (!this.taller()) this.loadingTecnicos.set(false); },
       });
     }
   }

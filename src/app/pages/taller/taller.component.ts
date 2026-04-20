@@ -6,6 +6,8 @@ import { ToastService } from '../../core/services/toast.service';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { ServicioTaller, TIPOS_SERVICIO, TipoServicio } from '../../core/models/taller.model';
 
+type GeoStatus = 'idle' | 'loading' | 'success' | 'error';
+
 @Component({
   selector: 'app-taller',
   standalone: true,
@@ -23,9 +25,10 @@ export class TallerComponent implements OnInit {
   saving    = signal(false);
   editMode  = signal(false);
 
-  servicios    = signal<ServicioTaller[]>([]);
-  tiposConfig  = TIPOS_SERVICIO;
+  servicios      = signal<ServicioTaller[]>([]);
+  tiposConfig    = TIPOS_SERVICIO;
   savingServicio = signal<TipoServicio | null>(null);
+  geoStatus      = signal<GeoStatus>('idle');
 
   form = this.fb.group({
     nombre:    ['', Validators.required],
@@ -69,6 +72,28 @@ export class TallerComponent implements OnInit {
     this.tallerSvc.getServicios(id).subscribe({
       next: s => this.servicios.set(s),
     });
+  }
+
+  usarMiUbicacion(): void {
+    if (!navigator.geolocation) {
+      this.toast.error('Tu navegador no soporta geolocalización.');
+      return;
+    }
+    this.geoStatus.set('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        this.form.patchValue({
+          latitud:  pos.coords.latitude,
+          longitud: pos.coords.longitude,
+        });
+        this.geoStatus.set('success');
+      },
+      () => {
+        this.toast.error('No se pudo obtener la ubicación. Verifica los permisos del navegador.');
+        this.geoStatus.set('error');
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    );
   }
 
   save(): void {

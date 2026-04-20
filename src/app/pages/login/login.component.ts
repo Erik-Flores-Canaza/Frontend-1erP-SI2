@@ -46,9 +46,12 @@ export class LoginComponent {
               this.error.set('Este panel es exclusivo para administradores de taller.');
               return;
             }
+            // loadMyTaller() devuelve EMPTY en 404 (admin sin taller):
+            // EMPTY completa sin emitir, así que se necesita 'complete' además de 'next'.
             this.tallerSvc.loadMyTaller().subscribe({
-              next:  () => this.router.navigate(['/dashboard']),
-              error: () => this.router.navigate(['/dashboard']),
+              next:     () => this.router.navigate(['/dashboard']),
+              error:    () => this.router.navigate(['/dashboard']),
+              complete: () => this.router.navigate(['/dashboard']),
             });
           },
           error: () => {

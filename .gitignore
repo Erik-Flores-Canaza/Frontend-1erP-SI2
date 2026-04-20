@@ -1,0 +1,37 @@
+# Angular
+node_modules/
+dist/
+.angular/
+.angular.cache/
+
+# Dependencies
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+
+# Media files (test assets)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.mp3
+*.m4a
+*.wav
+*.webp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
