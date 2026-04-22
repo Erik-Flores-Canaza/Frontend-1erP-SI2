@@ -1,0 +1,225 @@
+<!-- Header -->
+<div class="mb-8">
+  <h1 class="page-title">Métricas del taller</h1>
+  <p class="text-app-muted text-sm mt-1">Indicadores de rendimiento y actividad de los últimos 6 meses</p>
+</div>
+
+<!-- Skeletons -->
+@if (loading()) {
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    @for (_ of [1,2,3]; track $index) {
+      <div class="card flex flex-col gap-3">
+        <app-skeleton height="0.875rem" width="50%"/>
+        <app-skeleton height="2.5rem" width="40%"/>
+        <app-skeleton height="0.75rem" width="70%"/>
+      </div>
+    }
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    @for (_ of [1,2,3]; track $index) {
+      <div class="card flex flex-col gap-3">
+        <app-skeleton height="0.875rem" width="50%"/>
+        <app-skeleton height="2.5rem" width="40%"/>
+        <app-skeleton height="0.75rem" width="70%"/>
+      </div>
+    }
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card">
+      <app-skeleton height="1rem" width="50%" class="mb-4 block"/>
+      <app-skeleton height="260px" width="100%"/>
+    </div>
+    <div class="card">
+      <app-skeleton height="1rem" width="50%" class="mb-4 block"/>
+      <app-skeleton height="260px" width="100%"/>
+    </div>
+  </div>
+}
+
+@else if (!metricas()) {
+  <div class="card flex flex-col items-center justify-center py-20 text-center">
+    <span class="material-icons text-app-faint text-4xl mb-4">bar_chart</span>
+    <h3 class="font-semibold text-app-text mb-2">Sin datos disponibles</h3>
+    <p class="text-app-muted text-sm max-w-xs">
+      Las métricas aparecerán conforme tu taller atienda solicitudes.
+    </p>
+  </div>
+}
+
+@else {
+  @let m = metricas()!;
+
+  <!-- KPI cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+    <!-- Total atenciones -->
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent text-2xl">assignment_turned_in</span>
+      </div>
+      <div>
+        <p class="text-3xl font-bold text-app-text">{{ m.total_atenciones }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Atenciones completadas</p>
+      </div>
+    </div>
+
+    <!-- Tiempo promedio de respuesta -->
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent-orange/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent-orange text-2xl">schedule</span>
+      </div>
+      <div>
+        <p class="text-3xl font-bold text-app-text">{{ formatMin(m.tiempo_promedio_respuesta) }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Tiempo promedio de respuesta</p>
+      </div>
+    </div>
+
+    <!-- Tasa de aceptación -->
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-success text-2xl">thumb_up</span>
+      </div>
+      <div>
+        <p class="text-3xl font-bold text-app-text">{{ formatPorcentaje(m.tasa_aceptacion) }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Tasa de aceptación</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- KPI cards — Ingresos -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+
+    <!-- Ingresos neto total -->
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-success text-2xl">payments</span>
+      </div>
+      <div>
+        <p class="text-3xl font-bold text-success">{{ formatMoney(m.ingresos_neto_total) }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Ingresos netos totales</p>
+      </div>
+    </div>
+
+    <!-- Servicios cobrados -->
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent text-2xl">check_circle</span>
+      </div>
+      <div>
+        <p class="text-3xl font-bold text-app-text">{{ m.servicios_cobrados }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Servicios cobrados</p>
+      </div>
+    </div>
+
+    <!-- Pendientes de cobro -->
+    <div class="card flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-accent-orange/10 flex items-center justify-center flex-shrink-0">
+        <span class="material-icons text-accent-orange text-2xl">pending_actions</span>
+      </div>
+      <div>
+        <p class="text-3xl font-bold text-app-text">{{ m.servicios_pendientes_cobro }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Pendientes de cobro</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Atenciones por tipo (bar) -->
+    <div class="card">
+      <div class="flex items-center gap-2 mb-5">
+        <span class="material-icons text-accent text-lg">bar_chart</span>
+        <h3 class="section-title mb-0">Atenciones por tipo</h3>
+      </div>
+
+      @if (m.atenciones_por_tipo.length === 0) {
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <span class="material-icons text-app-faint text-3xl mb-2">bar_chart</span>
+          <p class="text-app-muted text-sm">Sin datos por tipo todavía</p>
+        </div>
+      } @else {
+        <div class="relative" style="height: 260px;">
+          <canvas #barCanvas></canvas>
+        </div>
+
+        <!-- Leyenda manual -->
+        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-4">
+          @for (t of m.atenciones_por_tipo; track t.clasificacion) {
+            <div class="flex items-center gap-1.5 text-xs text-app-muted">
+              <span class="w-2 h-2 rounded-sm bg-accent inline-block"></span>
+              <span class="capitalize">{{ t.clasificacion }}</span>
+              <span class="text-app-text font-semibold">{{ t.total }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Atenciones por mes (line) -->
+    <div class="card">
+      <div class="flex items-center gap-2 mb-5">
+        <span class="material-icons text-accent-orange text-lg">show_chart</span>
+        <h3 class="section-title mb-0">Atenciones por mes</h3>
+        <span class="text-xs text-app-faint ml-auto">Últimos 6 meses</span>
+      </div>
+
+      @if (m.atenciones_por_mes.length === 0) {
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+          <span class="material-icons text-app-faint text-3xl mb-2">show_chart</span>
+          <p class="text-app-muted text-sm">Sin datos mensuales todavía</p>
+        </div>
+      } @else {
+        <div class="relative" style="height: 260px;">
+          <canvas #lineCanvas></canvas>
+        </div>
+      }
+    </div>
+
+  </div>
+
+  <!-- Ingresos por mes (line) -->
+  @if (m.ingresos_por_mes && m.ingresos_por_mes.length > 0) {
+    <div class="card mt-6">
+      <div class="flex items-center gap-2 mb-5">
+        <span class="material-icons text-success text-lg">trending_up</span>
+        <h3 class="section-title mb-0">Ingresos por mes</h3>
+        <span class="text-xs text-app-faint ml-auto">Servicios pagados</span>
+      </div>
+      <div class="relative" style="height: 260px;">
+        <canvas #ingresosCanvas></canvas>
+      </div>
+    </div>
+  }
+
+  <!-- Detalle por tipo (tabla pequeña debajo) -->
+  @if (m.atenciones_por_tipo.length > 0) {
+    <div class="card mt-6">
+      <h3 class="section-title">Desglose por tipo de incidente</h3>
+      <div class="overflow-x-auto">
+        <table class="data-table w-full">
+          <thead>
+            <tr>
+              <th class="px-4 py-2 text-left text-xs text-app-faint font-semibold uppercase tracking-wide">Tipo</th>
+              <th class="px-4 py-2 text-right text-xs text-app-faint font-semibold uppercase tracking-wide">Cantidad</th>
+              <th class="px-4 py-2 text-right text-xs text-app-faint font-semibold uppercase tracking-wide">% del total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of m.atenciones_por_tipo; track t.clasificacion) {
+              <tr class="border-t border-app-border">
+                <td class="px-4 py-2.5 text-sm text-app-text capitalize">{{ t.clasificacion }}</td>
+                <td class="px-4 py-2.5 text-right font-mono text-sm text-app-text">{{ t.total }}</td>
+                <td class="px-4 py-2.5 text-right text-sm text-app-muted">
+                  {{ m.total_atenciones > 0 ? ((t.total / m.total_atenciones) * 100).toFixed(1) + '%' : '—' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+}

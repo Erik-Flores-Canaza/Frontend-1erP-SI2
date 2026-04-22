@@ -54,6 +54,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/historial/historial.component').then(m => m.HistorialComponent),
       },
+      {
+        path: 'metricas',
+        loadComponent: () =>
+          import('./pages/metricas/metricas.component').then(m => m.MetricasComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

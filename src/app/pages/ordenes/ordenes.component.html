@@ -50,6 +50,7 @@
       @let cMeta = inc.clasificacion_ia ? clasificacionMeta[inc.clasificacion_ia] : null;
       @let enAccion = accionando() === inc.id;
       @let siguienteEstado = ESTADOS_AVANZAR[inc.estado];
+      @let chatActivo = chatAbierto() === inc.id;
 
       <div class="card" [class.opacity-60]="enAccion">
 
@@ -75,7 +76,7 @@
           </div>
         </div>
 
-        <!-- Resumen -->
+        <!-- Resumen IA -->
         @if (inc.resumen_ia) {
           <p class="text-sm text-app-muted mb-3 border-l-2 border-accent/40 pl-3">
             {{ inc.resumen_ia }}
@@ -131,14 +132,12 @@
         }
 
         <!-- Acciones -->
-        <div class="flex items-center gap-3 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
 
           <!-- Asignar técnico (si aún no hay) -->
           @if (sinTecnico) {
-            <button
-              (click)="abrirModalTecnico(inc)"
-              class="btn-primary flex items-center gap-2 text-sm"
-            >
+            <button (click)="abrirModalTecnico(inc)"
+                    class="btn-primary flex items-center gap-2 text-sm">
               <span class="material-icons text-base">person_add</span>
               Asignar técnico
             </button>
@@ -146,11 +145,9 @@
 
           <!-- Avanzar estado -->
           @if (siguienteEstado && asigAceptada?.tecnico_id) {
-            <button
-              (click)="avanzarEstado(inc)"
-              [disabled]="enAccion"
-              class="btn-ghost flex items-center gap-2 text-sm border border-app-border"
-            >
+            <button (click)="avanzarEstado(inc)"
+                    [disabled]="enAccion"
+                    class="btn-ghost flex items-center gap-2 text-sm border border-app-border">
               @if (enAccion) {
                 <span class="material-icons text-base animate-spin">sync</span>
               } @else {
@@ -160,15 +157,125 @@
             </button>
           }
 
-          <!-- Incidente completado -->
+          <!-- Registrar pago (cuando está atendido) -->
           @if (inc.estado === 'atendido') {
-            <span class="flex items-center gap-1.5 text-success text-sm font-medium">
-              <span class="material-icons text-base">verified</span>
-              Servicio completado
-            </span>
+            <button (click)="abrirModalPago(inc)"
+                    class="btn-primary flex items-center gap-2 text-sm">
+              <span class="material-icons text-base">payment</span>
+              Registrar pago
+            </button>
+          }
+
+          <!-- Chat -->
+          @if (asigAceptada) {
+            <button
+              (click)="toggleChat(inc.id)"
+              class="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors duration-150"
+              [class.border-accent]="chatActivo"
+              [class.text-accent]="chatActivo"
+              [class.border-app-border]="!chatActivo"
+              [class.text-app-muted]="!chatActivo"
+              [class.hover:border-accent]="!chatActivo"
+            >
+              <span class="material-icons text-base">chat</span>
+              <span>Chat</span>
+              <!-- Dot de estado WebSocket -->
+              <span class="w-2 h-2 rounded-full ml-0.5 flex-shrink-0"
+                    [class.bg-success]="chatActivo && chatSvc.connected()"
+                    [class.bg-app-muted]="chatActivo && chatSvc.connecting()"
+                    [class.bg-error]="chatActivo && !chatSvc.connected() && !chatSvc.connecting()"
+                    [class.bg-app-faint]="!chatActivo">
+              </span>
+            </button>
           }
 
         </div>
+
+        <!-- ── Panel de chat inline ──────────────────────────────────────── -->
+        @if (chatActivo) {
+          <div class="mt-4 border-t border-app-border pt-4">
+
+            <!-- Estado de conexión -->
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-xs text-app-faint font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                <span class="material-icons text-sm">chat</span>
+                Chat con el cliente
+              </p>
+              <div class="flex items-center gap-1.5 text-xs">
+                @if (chatSvc.connecting()) {
+                  <span class="material-icons text-xs text-app-muted animate-spin">sync</span>
+                  <span class="text-app-muted">Conectando…</span>
+                } @else if (chatSvc.connected()) {
+                  <span class="w-2 h-2 rounded-full bg-success"></span>
+                  <span class="text-success">Conectado</span>
+                } @else {
+                  <span class="w-2 h-2 rounded-full bg-error"></span>
+                  <span class="text-error">Desconectado</span>
+                }
+              </div>
+            </div>
+
+            <!-- Mensajes -->
+            <div
+              id="chat-messages-container"
+              class="bg-app-elevated rounded-xl px-3 py-3 space-y-2 overflow-y-auto mb-3"
+              style="min-height: 140px; max-height: 280px;"
+            >
+              @if (chatSvc.messages().length === 0) {
+                <div class="flex items-center justify-center h-24 text-center">
+                  <p class="text-xs text-app-faint">Sin mensajes todavía. Sé el primero en escribir.</p>
+                </div>
+              }
+              @for (msg of chatSvc.messages(); track msg.id) {
+                @let esMio = msg.rol_remitente === 'taller';
+                <div class="flex" [class.justify-end]="esMio">
+                  <div class="max-w-[75%]"
+                       [class.items-end]="esMio"
+                       [class.items-start]="!esMio">
+                    <div
+                      class="px-3 py-2 rounded-2xl text-sm leading-snug"
+                      [class.rounded-br-md]="esMio"
+                      [class.rounded-bl-md]="!esMio"
+                      [class.bg-accent]="esMio"
+                      [class.text-white]="esMio"
+                      [class.bg-app-card]="!esMio"
+                      [class.text-app-text]="!esMio"
+                      [class.border]="!esMio"
+                      [class.border-app-border]="!esMio"
+                    >
+                      {{ msg.contenido }}
+                    </div>
+                    <p class="text-xs text-app-faint mt-0.5 px-1"
+                       [class.text-right]="esMio">
+                      {{ esMio ? 'Taller' : 'Cliente' }} · {{ horaMsg(msg.creado_en) }}
+                    </p>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Input -->
+            <div class="flex gap-2">
+              <input
+                type="text"
+                [(ngModel)]="chatInput"
+                (keydown)="onChatKeydown($event)"
+                placeholder="Escribe un mensaje…"
+                [disabled]="!chatSvc.connected()"
+                class="input-field text-sm flex-1 py-2"
+              />
+              <button
+                (click)="enviarMensaje()"
+                [disabled]="!chatSvc.connected() || !chatInput.trim()"
+                class="btn-primary px-4 py-2 flex-shrink-0 disabled:opacity-40"
+                matTooltip="Enviar (Enter)"
+              >
+                <span class="material-icons text-base">send</span>
+              </button>
+            </div>
+          </div>
+        }
+
       </div>
     }
   </div>
@@ -178,14 +285,10 @@
 @if (modalAbierto()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
        (click)="cerrarModal()">
-    <!-- Backdrop -->
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-
-    <!-- Panel -->
     <div class="relative bg-app-card border border-app-border rounded-2xl w-full max-w-md shadow-2xl"
          (click)="$event.stopPropagation()">
 
-      <!-- Header del modal -->
       <div class="flex items-center justify-between p-5 border-b border-app-border">
         <div>
           <h3 class="font-bold text-app-text">Asignar técnico</h3>
@@ -195,7 +298,7 @@
               Distancias calculadas desde la ubicación del cliente
             </p>
           } @else {
-            <p class="text-xs text-app-muted mt-0.5">Selecciona un técnico disponible para esta orden</p>
+            <p class="text-xs text-app-muted mt-0.5">Selecciona un técnico disponible</p>
           }
         </div>
         <button (click)="cerrarModal()" class="btn-ghost p-1.5">
@@ -203,7 +306,6 @@
         </button>
       </div>
 
-      <!-- Lista de técnicos -->
       <div class="p-5 space-y-2 max-h-72 overflow-y-auto">
         @if (tecnicosDisponibles().length === 0) {
           <div class="text-center py-8">
@@ -217,15 +319,11 @@
             [class.border-accent]="tecnicoElegido() === tec.id"
             [class.bg-accent\/5]="tecnicoElegido() === tec.id"
             [class.border-app-border]="tecnicoElegido() !== tec.id"
-            [class.hover:border-app-muted]="tecnicoElegido() !== tec.id"
           >
-            <input
-              type="radio"
-              name="tecnico"
-              [value]="tec.id"
-              [(ngModel)]="tecnicoElegido"
-              class="accent-accent"
-            />
+            <input type="radio" name="tecnico" [value]="tec.id"
+                   [ngModel]="tecnicoElegido()"
+                   (ngModelChange)="tecnicoElegido.set($event)"
+                   class="accent-accent"/>
             <div class="w-9 h-9 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
               <span class="material-icons text-success text-lg">engineering</span>
             </div>
@@ -246,7 +344,7 @@
                     (click)="$event.preventDefault(); notificarUbicacion(tec.id)"
                     [disabled]="notificandoTecnico() === tec.id"
                     class="text-xs text-accent hover:underline disabled:opacity-50 flex items-center gap-0.5"
-                    matTooltip="Enviar notificación al técnico para que actualice su ubicación"
+                    matTooltip="Notificar al técnico para que comparta su ubicación"
                   >
                     <span class="material-icons text-xs">notifications</span>
                     {{ notificandoTecnico() === tec.id ? 'Enviado' : 'Notificar' }}
@@ -259,14 +357,11 @@
         }
       </div>
 
-      <!-- Footer del modal -->
       <div class="flex justify-end gap-3 p-5 border-t border-app-border">
         <button (click)="cerrarModal()" class="btn-ghost text-sm">Cancelar</button>
-        <button
-          (click)="confirmarAsignacion()"
-          [disabled]="!tecnicoElegido() || asignandoTecnico()"
-          class="btn-primary flex items-center gap-2 text-sm"
-        >
+        <button (click)="confirmarAsignacion()"
+                [disabled]="!tecnicoElegido() || asignandoTecnico()"
+                class="btn-primary flex items-center gap-2 text-sm">
           @if (asignandoTecnico()) {
             <span class="material-icons text-base animate-spin">sync</span>
           } @else {
@@ -275,6 +370,157 @@
           Confirmar asignación
         </button>
       </div>
+    </div>
+  </div>
+}
+
+<!-- ── Modal: Pago ─────────────────────────────────────────────────────────── -->
+@if (pagoModalAbierto()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+       (click)="cerrarModalPago()">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+    <div class="relative bg-app-card border border-app-border rounded-2xl w-full max-w-md shadow-2xl"
+         (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between p-5 border-b border-app-border">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center">
+            <span class="material-icons text-accent text-lg">payment</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-app-text">Registrar pago</h3>
+            <p class="text-xs text-app-muted">
+              {{ pagoStep() === 'amount' ? 'Paso 1: Define el monto' : 'Paso 2: Ingresa tarjeta' }}
+            </p>
+          </div>
+        </div>
+        <button (click)="cerrarModalPago()" class="btn-ghost p-1.5" [disabled]="pagoProcessing()">
+          <span class="material-icons text-xl">close</span>
+        </button>
+      </div>
+
+      <!-- Body: Paso 1 — Monto -->
+      @if (pagoStep() === 'amount') {
+        <div class="p-5 space-y-5">
+
+          <!-- Campo monto -->
+          <div>
+            <label class="input-label">Monto total del servicio (USD)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted font-semibold">$</span>
+              <input
+                type="number"
+                [(ngModel)]="montoPago"
+                min="1"
+                step="0.01"
+                placeholder="0.00"
+                class="input-field pl-7 w-full"
+              />
+            </div>
+          </div>
+
+          <!-- Desglose automático -->
+          @if (montoPago > 0) {
+            <div class="bg-app-elevated rounded-xl p-4 space-y-2.5">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-app-muted">Monto total</span>
+                <span class="text-app-text font-semibold">${{ montoPago.toFixed(2) }}</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-app-muted flex items-center gap-1">
+                  <span class="material-icons text-xs">remove_circle_outline</span>
+                  Comisión plataforma (10%)
+                </span>
+                <span class="text-error">-${{ (montoPago * 0.10).toFixed(2) }}</span>
+              </div>
+              <div class="border-t border-app-border pt-2.5 flex items-center justify-between">
+                <span class="text-app-text font-semibold">Neto para el taller</span>
+                <span class="text-success text-lg font-bold">${{ (montoPago * 0.90).toFixed(2) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="flex justify-end gap-3 p-5 border-t border-app-border">
+          <button (click)="cerrarModalPago()" class="btn-ghost text-sm">Cancelar</button>
+          <button
+            (click)="crearIntent()"
+            [disabled]="montoPago <= 0 || pagoProcessing()"
+            class="btn-primary flex items-center gap-2 text-sm"
+          >
+            @if (pagoProcessing()) {
+              <span class="material-icons text-base animate-spin">sync</span>
+              Procesando…
+            } @else {
+              <span class="material-icons text-base">arrow_forward</span>
+              Continuar al pago
+            }
+          </button>
+        </div>
+      }
+
+      <!-- Body: Paso 2 — Tarjeta Stripe -->
+      @if (pagoStep() === 'card') {
+        @let intent = intentData();
+        <div class="p-5 space-y-5">
+
+          <!-- Resumen del monto -->
+          @if (intent) {
+            <div class="bg-app-elevated rounded-xl p-4 space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-app-muted">Total a cobrar</span>
+                <span class="text-app-text font-bold">${{ intent.monto_total.toFixed(2) }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-app-muted">Neto taller (90%)</span>
+                <span class="text-success font-semibold">${{ intent.neto_taller.toFixed(2) }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- Stripe Card Element -->
+          <div>
+            <label class="input-label mb-2 block">Datos de la tarjeta</label>
+            <div
+              id="stripe-card-element"
+              class="input-field py-3.5 px-3"
+              style="min-height: 44px;"
+            ></div>
+          </div>
+
+          <!-- Tarjeta de prueba -->
+          <div class="flex items-start gap-2 bg-accent-orange/5 border border-accent-orange/20 rounded-lg px-3 py-2.5">
+            <span class="material-icons text-accent-orange text-sm flex-shrink-0 mt-0.5">info</span>
+            <div class="text-xs text-app-muted">
+              <p class="font-semibold text-accent-orange mb-0.5">Tarjeta de prueba</p>
+              <p class="font-mono">4242 4242 4242 4242 &nbsp;·&nbsp; Cualquier fecha futura &nbsp;·&nbsp; Cualquier CVC</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="flex justify-end gap-3 p-5 border-t border-app-border">
+          <button (click)="pagoStep.set('amount')" class="btn-ghost text-sm"
+                  [disabled]="pagoProcessing()">
+            Atrás
+          </button>
+          <button
+            (click)="confirmarPago()"
+            [disabled]="pagoProcessing()"
+            class="btn-primary flex items-center gap-2 text-sm"
+          >
+            @if (pagoProcessing()) {
+              <span class="material-icons text-base animate-spin">sync</span>
+              Procesando…
+            } @else {
+              <span class="material-icons text-base">lock</span>
+              Confirmar pago ${{ intent?.monto_total?.toFixed(2) ?? '0.00' }}
+            }
+          </button>
+        </div>
+      }
 
     </div>
   </div>

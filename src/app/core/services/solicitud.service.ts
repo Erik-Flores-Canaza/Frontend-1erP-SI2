@@ -5,6 +5,7 @@ import {
   Incidente, Asignacion,
   ResponderAsignacionBody, AsignarTecnicoBody,
 } from '../models/incidente.model';
+import { HistorialItem, MetricasTaller } from '../models/historial.model';
 
 @Injectable({ providedIn: 'root' })
 export class SolicitudService {
@@ -37,8 +38,13 @@ export class SolicitudService {
     );
   }
 
-  /** CU-15 — Historial de atenciones completadas/canceladas */
+  /** CU-15 — Historial enriquecido de atenciones completadas/canceladas */
   getHistorial(tallerId: string) {
-    return this.http.get<Incidente[]>(`${this.api}/talleres/${tallerId}/historial`);
+    return this.http.get<HistorialItem[]>(`${this.api}/talleres/${tallerId}/historial`);
+  }
+
+  /** CU-15 — Métricas de rendimiento del taller */
+  getMetricas(tallerId: string) {
+    return this.http.get<MetricasTaller>(`${this.api}/talleres/${tallerId}/metricas`);
   }
 }

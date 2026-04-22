@@ -1,193 +1,270 @@
-<div>
-  <!-- Header -->
-  <div class="mb-8">
+<!-- Header -->
+<div class="flex items-start justify-between mb-6 gap-4 flex-wrap">
+  <div>
     <h1 class="page-title">Historial de atenciones</h1>
-    <p class="text-app-muted text-sm mt-1">Registro completo de emergencias atendidas y canceladas por tu taller</p>
+    <p class="text-app-muted text-sm mt-1">Registro completo de emergencias atendidas y canceladas</p>
+  </div>
+</div>
+
+<!-- Skeletons -->
+@if (loading()) {
+  <div class="space-y-3">
+    @for (_ of [1,2,3,4,5]; track $index) {
+      <div class="card flex items-center gap-4">
+        <app-skeleton height="2.5rem" width="2.5rem" class="rounded-lg flex-shrink-0"/>
+        <div class="flex-1 space-y-2">
+          <app-skeleton height="1rem" width="40%"/>
+          <app-skeleton height="0.875rem" width="60%"/>
+        </div>
+        <app-skeleton height="1.5rem" width="5rem" class="rounded-full"/>
+      </div>
+    }
+  </div>
+}
+
+@else {
+  <!-- Stats rápidas -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="card text-center py-4">
+      <p class="text-2xl font-bold text-app-text">{{ historial().length }}</p>
+      <p class="text-xs text-app-muted mt-1">Total</p>
+    </div>
+    <div class="card text-center py-4">
+      <p class="text-2xl font-bold text-success">{{ countEstado('atendido') }}</p>
+      <p class="text-xs text-app-muted mt-1">Atendidos</p>
+    </div>
+    <div class="card text-center py-4">
+      <p class="text-2xl font-bold text-error">{{ countEstado('cancelado') }}</p>
+      <p class="text-xs text-app-muted mt-1">Cancelados</p>
+    </div>
+    <div class="card text-center py-4">
+      <p class="text-2xl font-bold text-accent">{{ tasaExito() }}%</p>
+      <p class="text-xs text-app-muted mt-1">Tasa de éxito</p>
+    </div>
   </div>
 
-  <!-- Skeletons -->
-  @if (loading()) {
-    <div class="space-y-3">
-      @for (_ of [1,2,3,4,5]; track $index) {
-        <div class="card flex items-center gap-4">
-          <app-skeleton height="2.5rem" width="2.5rem" class="rounded-lg flex-shrink-0"/>
-          <div class="flex-1 space-y-2">
-            <app-skeleton height="1rem" width="40%"/>
-            <app-skeleton height="0.875rem" width="60%"/>
-          </div>
-          <app-skeleton height="1.5rem" width="5rem" class="rounded-full"/>
-        </div>
+  <!-- Filtros -->
+  <div class="card mb-4">
+    <div class="flex items-center gap-3 flex-wrap">
+      <!-- Clasificación -->
+      <select
+        [ngModel]="filtroClasificacion()"
+        (ngModelChange)="filtroClasificacion.set($event)"
+        class="input-field text-sm py-1.5 w-44"
+      >
+        <option value="">Todos los tipos</option>
+        @for (c of clasificaciones; track c) {
+          <option [value]="c">{{ clasificacionMeta[c]?.label ?? c }}</option>
+        }
+      </select>
+
+      <!-- Desde -->
+      <input
+        type="date"
+        [ngModel]="filtroDesde()"
+        (ngModelChange)="filtroDesde.set($event)"
+        class="input-field text-sm py-1.5 w-36"
+        placeholder="Desde"
+      />
+
+      <!-- Hasta -->
+      <input
+        type="date"
+        [ngModel]="filtroHasta()"
+        (ngModelChange)="filtroHasta.set($event)"
+        class="input-field text-sm py-1.5 w-36"
+        placeholder="Hasta"
+      />
+
+      @if (filtroClasificacion() || filtroDesde() || filtroHasta()) {
+        <button (click)="limpiarFiltros()" class="btn-ghost text-sm flex items-center gap-1.5">
+          <span class="material-icons text-base">close</span> Limpiar
+        </button>
       }
+
+      <span class="text-xs text-app-muted ml-auto">
+        {{ historialFiltrado().length }} resultado(s)
+      </span>
     </div>
-  }
+  </div>
 
   <!-- Empty -->
-  @else if (historial().length === 0) {
-    <div class="card flex flex-col items-center justify-center py-20 text-center">
+  @if (historialFiltrado().length === 0) {
+    <div class="card flex flex-col items-center justify-center py-16 text-center">
       <div class="w-16 h-16 rounded-full bg-app-elevated flex items-center justify-center mb-4">
         <span class="material-icons text-app-faint text-3xl">history</span>
       </div>
-      <h3 class="font-semibold text-app-text mb-2">Sin atenciones registradas</h3>
+      <h3 class="font-semibold text-app-text mb-2">Sin resultados</h3>
       <p class="text-app-muted text-sm max-w-xs">
-        Aquí aparecerán las emergencias que tu taller haya atendido o cancelado.
+        @if (filtroClasificacion() || filtroDesde() || filtroHasta()) {
+          Prueba ajustando los filtros de búsqueda.
+        } @else {
+          Aquí aparecerán las emergencias que tu taller haya atendido o cancelado.
+        }
       </p>
     </div>
   }
 
-  <!-- Lista -->
+  <!-- Tabla de historial -->
   @else {
-    <!-- Stats rápidas -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div class="card text-center py-4">
-        <p class="text-2xl font-bold text-app-text">{{ historial().length }}</p>
-        <p class="text-xs text-app-muted mt-1">Total</p>
-      </div>
-      <div class="card text-center py-4">
-        <p class="text-2xl font-bold text-success">{{ countEstado('atendido') }}</p>
-        <p class="text-xs text-app-muted mt-1">Atendidos</p>
-      </div>
-      <div class="card text-center py-4">
-        <p class="text-2xl font-bold text-error">{{ countEstado('cancelado') }}</p>
-        <p class="text-xs text-app-muted mt-1">Cancelados</p>
-      </div>
-      <div class="card text-center py-4">
-        <p class="text-2xl font-bold text-accent">{{ tasaExito() }}%</p>
-        <p class="text-xs text-app-muted mt-1">Tasa de éxito</p>
-      </div>
-    </div>
+    <div class="card p-0 overflow-hidden">
+      <table class="data-table w-full">
+        <thead>
+          <tr>
+            <th class="px-4 py-3 text-left text-xs text-app-faint font-semibold uppercase tracking-wide">Tipo</th>
+            <th class="px-4 py-3 text-left text-xs text-app-faint font-semibold uppercase tracking-wide">Fecha</th>
+            <th class="px-4 py-3 text-left text-xs text-app-faint font-semibold uppercase tracking-wide hidden sm:table-cell">Prioridad</th>
+            <th class="px-4 py-3 text-left text-xs text-app-faint font-semibold uppercase tracking-wide hidden md:table-cell">Técnico</th>
+            <th class="px-4 py-3 text-left text-xs text-app-faint font-semibold uppercase tracking-wide hidden lg:table-cell">Duración</th>
+            <th class="px-4 py-3 text-left text-xs text-app-faint font-semibold uppercase tracking-wide">Estado</th>
+            <th class="px-4 py-3 text-right text-xs text-app-faint font-semibold uppercase tracking-wide">Pago</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of historialFiltrado(); track item.incidente_id) {
+            @let cMeta = item.clasificacion_ia ? clasificacionMeta[item.clasificacion_ia] : null;
+            @let pMeta = prioridadMeta[item.prioridad];
 
-    <!-- Lista de incidentes con detalle expandible -->
-    <div class="space-y-2">
-      @for (inc of historial(); track inc.id) {
-        @let eMeta = estadoMeta[inc.estado];
-        @let cMeta = inc.clasificacion_ia ? clasificacionMeta[inc.clasificacion_ia] : null;
-        @let pMeta = prioridadMeta[inc.prioridad];
-        @let abierto = expandedId() === inc.id;
-        @let asig = inc.asignacion;
-
-        <div class="card p-0 overflow-hidden transition-all duration-200">
-
-          <!-- Fila principal — clic para expandir -->
-          <button
-            (click)="toggleDetalle(inc.id)"
-            class="w-full flex items-center gap-4 px-4 py-3.5 text-left hover:bg-app-elevated transition-colors"
-          >
-            <!-- Ícono tipo -->
-            <div class="w-9 h-9 rounded-lg bg-app-elevated flex items-center justify-center flex-shrink-0">
-              <span class="material-icons text-accent-orange text-lg">{{ cMeta?.icon ?? 'build' }}</span>
-            </div>
-
-            <!-- Info principal -->
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-sm text-app-text">{{ cMeta?.label ?? 'Sin clasificar' }}</p>
-              <p class="text-xs text-app-muted truncate mt-0.5">
-                {{ inc.resumen_ia ?? inc.descripcion ?? 'Sin descripción' }}
-              </p>
-            </div>
-
-            <!-- Badges -->
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <span [class]="pMeta.css" class="text-xs hidden sm:inline">{{ pMeta.label }}</span>
-              <span class="flex items-center gap-1 text-xs font-medium"
-                    [class.text-success]="inc.estado === 'atendido'"
-                    [class.text-error]="inc.estado === 'cancelado'">
-                <span class="material-icons text-sm">{{ eMeta.icon }}</span>
-                <span class="hidden sm:inline">{{ eMeta.label }}</span>
-              </span>
-              <span class="text-xs text-app-faint whitespace-nowrap hidden md:inline">
-                {{ tiempoDesde(inc.actualizado_en) }}
-              </span>
-              <!-- Chevron -->
-              <span class="material-icons text-app-faint text-lg transition-transform duration-200"
-                    [class.rotate-180]="abierto">
-                expand_more
-              </span>
-            </div>
-          </button>
-
-          <!-- Panel de detalle expandible -->
-          @if (abierto) {
-            <div class="border-t border-app-border px-4 py-4 bg-app-elevated grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-              <!-- Análisis IA -->
-              @if (inc.resumen_ia || inc.clasificacion_ia) {
-                <div class="sm:col-span-2 lg:col-span-3 bg-app-card rounded-lg px-4 py-3 border border-app-border">
-                  <p class="text-xs text-app-faint font-semibold uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                    <span class="material-icons text-sm text-accent">auto_awesome</span> Resumen IA
-                  </p>
-                  @if (inc.resumen_ia) {
-                    <p class="text-sm text-app-text">{{ inc.resumen_ia }}</p>
-                  }
-                  @if (inc.confianza_ia !== null) {
-                    <p class="text-xs text-app-muted mt-1">
-                      Confianza: <span class="font-mono text-app-text">{{ (inc.confianza_ia * 100).toFixed(0) }}%</span>
-                    </p>
-                  }
+            <tr
+              class="border-t border-app-border hover:bg-app-elevated transition-colors cursor-pointer"
+              (click)="toggleDetalle(item.incidente_id)"
+            >
+              <!-- Tipo -->
+              <td class="px-4 py-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-app-elevated flex items-center justify-center flex-shrink-0">
+                    <span class="material-icons text-accent-orange text-sm">{{ cMeta?.icon ?? 'build' }}</span>
+                  </div>
+                  <span class="text-sm font-medium text-app-text">{{ cMeta?.label ?? 'Sin clasificar' }}</span>
                 </div>
-              }
+              </td>
 
-              <!-- Descripción del cliente -->
-              @if (inc.descripcion) {
-                <div class="bg-app-card rounded-lg px-4 py-3 border border-app-border">
-                  <p class="text-xs text-app-faint font-semibold uppercase tracking-wide mb-1 flex items-center gap-1.5">
-                    <span class="material-icons text-sm">person</span> Descripción del cliente
-                  </p>
-                  <p class="text-sm text-app-text">{{ inc.descripcion }}</p>
-                </div>
-              }
+              <!-- Fecha -->
+              <td class="px-4 py-3 text-xs text-app-muted whitespace-nowrap">
+                {{ fechaCorta(item.fecha) }}
+              </td>
 
-              <!-- Taller y técnico -->
-              @if (asig) {
-                <div class="bg-app-card rounded-lg px-4 py-3 border border-app-border">
-                  <p class="text-xs text-app-faint font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                    <span class="material-icons text-sm">store</span> Taller / Técnico
-                  </p>
-                  @if (asig.taller) {
-                    <p class="text-sm font-medium text-app-text">{{ asig.taller.nombre }}</p>
-                    @if (asig.taller.direccion) {
-                      <p class="text-xs text-app-muted mt-0.5">{{ asig.taller.direccion }}</p>
+              <!-- Prioridad -->
+              <td class="px-4 py-3 hidden sm:table-cell">
+                <span [class]="pMeta.css" class="text-xs">{{ pMeta.label }}</span>
+              </td>
+
+              <!-- Técnico -->
+              <td class="px-4 py-3 hidden md:table-cell">
+                @if (item.tecnico) {
+                  <span class="text-sm text-app-text flex items-center gap-1.5">
+                    <span class="material-icons text-xs text-app-faint">engineering</span>
+                    {{ item.tecnico.nombre_completo }}
+                  </span>
+                } @else {
+                  <span class="text-xs text-app-faint">Sin asignar</span>
+                }
+              </td>
+
+              <!-- Duración -->
+              <td class="px-4 py-3 hidden lg:table-cell">
+                <span class="text-sm font-mono text-app-text">{{ formatDuracion(item.duracion_minutos) }}</span>
+              </td>
+
+              <!-- Estado -->
+              <td class="px-4 py-3">
+                <span class="flex items-center gap-1 text-xs font-medium"
+                      [class.text-success]="item.estado_final === 'atendido'"
+                      [class.text-error]="item.estado_final === 'cancelado'"
+                      [class.text-app-muted]="item.estado_final !== 'atendido' && item.estado_final !== 'cancelado'">
+                  <span class="material-icons text-sm">
+                    {{ item.estado_final === 'atendido' ? 'check_circle' : 'cancel' }}
+                  </span>
+                  <span class="capitalize">{{ item.estado_final }}</span>
+                </span>
+              </td>
+
+              <!-- Pago -->
+              <td class="px-4 py-3 text-right">
+                @if (item.pago_estado === 'pagado' && item.pago_monto_neto !== null) {
+                  <span class="inline-flex items-center gap-1 text-xs font-semibold text-success">
+                    <span class="material-icons text-sm">payments</span>
+                    ${{ item.pago_monto_neto.toFixed(2) }}
+                  </span>
+                } @else if (item.estado_final === 'atendido') {
+                  <span class="text-xs text-app-faint">Pendiente</span>
+                } @else {
+                  <span class="text-xs text-app-faint">—</span>
+                }
+              </td>
+            </tr>
+
+            <!-- Fila expandida de detalle -->
+            @if (expandedId() === item.incidente_id) {
+              <tr class="border-t border-app-border bg-app-elevated">
+                <td colspan="7" class="px-4 py-4">
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+
+                    @if (item.tecnico) {
+                      <div>
+                        <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Técnico asignado</p>
+                        <p class="text-app-text flex items-center gap-1.5">
+                          <span class="material-icons text-sm">engineering</span>
+                          {{ item.tecnico.nombre_completo }}
+                        </p>
+                      </div>
                     }
-                  }
-                  @if (asig.tecnico) {
-                    <div class="mt-2 pt-2 border-t border-app-border">
-                      <p class="text-xs text-app-faint mb-0.5">Técnico asignado</p>
-                      <p class="text-sm text-app-text flex items-center gap-1.5">
-                        <span class="material-icons text-sm text-app-faint">engineering</span>
-                        {{ asig.tecnico.nombre_completo }}
-                      </p>
-                    </div>
-                  }
-                </div>
-              }
 
-              <!-- Tiempos -->
-              <div class="bg-app-card rounded-lg px-4 py-3 border border-app-border">
-                <p class="text-xs text-app-faint font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                  <span class="material-icons text-sm">schedule</span> Tiempos
-                </p>
-                <div class="space-y-1.5 text-xs">
-                  <div class="flex justify-between">
-                    <span class="text-app-muted">Reportado</span>
-                    <span class="text-app-text font-mono">{{ inc.creado_en | date:'dd/MM HH:mm' }}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-app-muted">Cerrado</span>
-                    <span class="text-app-text font-mono">{{ inc.actualizado_en | date:'dd/MM HH:mm' }}</span>
-                  </div>
-                  @if (asig && asig.eta_minutos) {
-                    <div class="flex justify-between">
-                      <span class="text-app-muted">ETA estimado</span>
-                      <span class="text-app-text font-mono">{{ asig.eta_minutos }} min</span>
+                    <div>
+                      <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Duración total</p>
+                      <p class="text-app-text font-mono text-sm">{{ formatDuracion(item.duracion_minutos) }}</p>
                     </div>
-                  }
-                </div>
-              </div>
 
-            </div>
+                    <div>
+                      <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Fecha de atención</p>
+                      <p class="text-app-text">{{ fechaCorta(item.fecha) }}</p>
+                    </div>
+
+                    <div>
+                      <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Clasificación IA</p>
+                      <p class="text-app-text">{{ cMeta?.label ?? '—' }}</p>
+                    </div>
+
+                    <div>
+                      <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Prioridad</p>
+                      <span [class]="pMeta.css">{{ pMeta.label }}</span>
+                    </div>
+
+                    <div>
+                      <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Estado final</p>
+                      <span class="capitalize font-medium"
+                            [class.text-success]="item.estado_final === 'atendido'"
+                            [class.text-error]="item.estado_final === 'cancelado'">
+                        {{ item.estado_final }}
+                      </span>
+                    </div>
+
+                    <div>
+                      <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Estado de pago</p>
+                      @if (item.pago_estado === 'pagado') {
+                        <span class="text-success font-semibold flex items-center gap-1">
+                          <span class="material-icons text-sm">check_circle</span> Pagado
+                        </span>
+                      } @else if (item.estado_final === 'atendido') {
+                        <span class="text-app-muted">Pendiente de cobro</span>
+                      } @else {
+                        <span class="text-app-faint">—</span>
+                      }
+                    </div>
+
+                    @if (item.pago_monto_neto !== null) {
+                      <div>
+                        <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Ingreso neto</p>
+                        <p class="text-success font-bold text-sm">${{ item.pago_monto_neto.toFixed(2) }}</p>
+                      </div>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
           }
-
-        </div>
-      }
+        </tbody>
+      </table>
     </div>
   }
-</div>
+}

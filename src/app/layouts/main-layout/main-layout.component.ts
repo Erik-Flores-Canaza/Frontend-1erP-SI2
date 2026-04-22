@@ -40,6 +40,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     { label: 'Técnicos',           icon: 'engineering',          route: '/tecnicos' },
     { label: 'Turnos',             icon: 'calendar_month',       route: '/turnos' },
     { label: 'Historial',          icon: 'history',              route: '/historial' },
+    { label: 'Métricas',           icon: 'bar_chart',            route: '/metricas' },
   ];
 
   private pollSub?: Subscription;
