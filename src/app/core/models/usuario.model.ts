@@ -1,6 +1,6 @@
 export interface Rol {
   id: string;
-  nombre: 'cliente' | 'admin_taller' | 'tecnico';
+  nombre: 'cliente' | 'admin_taller' | 'tecnico' | 'superadmin';
 }
 
 export interface Usuario {

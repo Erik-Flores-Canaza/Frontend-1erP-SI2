@@ -1,23 +1,20 @@
 import {
-  Component, inject, signal, OnInit, OnDestroy,
+  Component, inject, signal, OnDestroy, effect, untracked,
 } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
-// @stripe/stripe-js — instalar con: npm install @stripe/stripe-js
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Stripe = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type StripeCardElement = any;
 
-import { TallerService }    from '../../core/services/taller.service';
+import { TallerContextService } from '../../core/services/taller-context.service';
 import { TecnicoService }   from '../../core/services/tecnico.service';
 import { SolicitudService } from '../../core/services/solicitud.service';
 import { IncidenteService } from '../../core/services/incidente.service';
 import { PagoService }      from '../../core/services/pago.service';
-import { ChatService }      from '../../core/services/chat.service';
-import { ToastService }     from '../../core/services/toast.service';
+import { ChatService }          from '../../core/services/chat.service';
+import { ToastService }         from '../../core/services/toast.service';
+import { WsNotificacionService } from '../../core/services/ws-notificacion.service';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import {
   ConfirmDialogComponent,
@@ -28,9 +25,10 @@ import {
   Incidente, AsignacionResumen, EstadoIncidente,
   ESTADO_META, PRIORIDAD_META, CLASIFICACION_META,
 } from '../../core/models/incidente.model';
-import { CrearIntentResponse } from '../../core/models/pago.model';
+import { Pago } from '../../core/models/pago.model';
 import { environment } from '../../../environments/environment';
 import { Tecnico } from '../../core/models/tecnico.model';
+import { horaBO, tiempoDesdeBO } from '../../core/utils/fecha.utils';
 
 interface TecnicoConDistancia extends Tecnico {
   distKm: number | null;
@@ -43,8 +41,8 @@ interface TecnicoConDistancia extends Tecnico {
   imports: [CommonModule, FormsModule, MatTooltipModule, SkeletonComponent],
   templateUrl: './ordenes.component.html',
 })
-export class OrdenesComponent implements OnInit, OnDestroy {
-  private tallerSvc    = inject(TallerService);
+export class OrdenesComponent implements OnDestroy {
+  private tallerCtx    = inject(TallerContextService);
   private tecnicoSvc   = inject(TecnicoService);
   private solicitudSvc = inject(SolicitudService);
   private incidenteSvc = inject(IncidenteService);
@@ -52,6 +50,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   readonly chatSvc     = inject(ChatService);
   private toast        = inject(ToastService);
   private dialog       = inject(MatDialog);
+  private wsNotif      = inject(WsNotificacionService);
 
   ordenes   = signal<Incidente[]>([]);
   tecnicos  = signal<Tecnico[]>([]);
@@ -66,21 +65,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   asignandoTecnico  = signal(false);
   notificandoTecnico = signal<string | null>(null);
 
-  // ── Modal: pago ───────────────────────────────────────────────────────────
-  pagoModalAbierto = signal(false);
-  ordenPago        = signal<Incidente | null>(null);
-  pagoStep         = signal<'amount' | 'card'>('amount');
-  intentData       = signal<CrearIntentResponse | null>(null);
-  pagoProcessing   = signal(false);
-  montoPago        = 0;   // input regular (no signal) para compatibilidad con ngModel
-
-  private stripe: Stripe | null = null;
-  private cardElement: StripeCardElement | null = null;
-  private cardMounted = false;
+  // ── Estado de pago por incidente ─────────────────────────────────────────
+  // El técnico fija el monto; el admin solo consulta el estado.
+  pagos = signal<Record<string, Pago | null>>({});
 
   // ── Chat inline ───────────────────────────────────────────────────────────
   chatAbierto  = signal<string | null>(null);  // incidente_id con chat abierto
   chatInput    = '';
+  /** Mensajes no leídos por incidente (se acumulan cuando el chat está cerrado). */
+  noLeidos     = signal<Record<string, number>>({});
+
+  noLeidosDe(incId: string): number {
+    return this.noLeidos()[incId] ?? 0;
+  }
 
   readonly apiBase           = environment.apiUrl.replace(/\/api$/, '');
   readonly estadoMeta        = ESTADO_META;
@@ -95,23 +92,46 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   };
 
   private tallerId = '';
+  private wsSub?: Subscription;
 
-  ngOnInit(): void {
-    const t = this.tallerSvc.taller();
-    if (t) {
-      this.tallerId = t.id;
-      this.cargarDatos();
-    } else {
-      this.tallerSvc.loadMyTaller().subscribe({
-        next:     taller => { this.tallerId = taller.id; this.cargarDatos(); },
-        error:    () => this.loading.set(false),
-        complete: () => { if (!this.tallerId) this.loading.set(false); },
-      });
-    }
+  constructor() {
+    effect(() => {
+      const t = this.tallerCtx.tallerActivo();
+      if (t) {
+        this.loading.set(true);
+        this.ordenes.set([]);
+        this.pagos.set({});
+        untracked(() => { this.tallerId = t.id; this.cargarDatos(); });
+      } else if (this.tallerCtx.sinTalleres()) {
+        this.loading.set(false);
+      }
+    });
+
+    // Reaccionar a eventos WS: pago confirmado y nuevos mensajes de chat
+    this.wsSub = this.wsNotif.mensajes$.subscribe(msg => {
+      if (msg.evento === 'pago_confirmado' && msg.incidente_id) {
+        const incId = msg.incidente_id;
+        if (this.ordenes().some(o => o.id === incId)) {
+          this.pagoSvc.getPago(incId).subscribe({
+            next:  pago => this.pagos.update(m => ({ ...m, [incId]: pago })),
+            error: ()   => {},
+          });
+        }
+      }
+
+      if (msg.evento === 'nuevo_mensaje_chat' && msg.incidente_id) {
+        const incId = msg.incidente_id;
+        // Solo incrementar badge si el chat de ese incidente no está abierto ahora mismo
+        if (this.chatAbierto() !== incId) {
+          this.noLeidos.update(m => ({ ...m, [incId]: (m[incId] ?? 0) + 1 }));
+        }
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.chatSvc.disconnect();
+    this.wsSub?.unsubscribe();
   }
 
   private cargarDatos(): void {
@@ -126,7 +146,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   private cargarOrdenes(done?: () => void): void {
     this.solicitudSvc.getOrdenes(this.tallerId).subscribe({
-      next: lista => { this.ordenes.set(lista); done?.(); },
+      next: lista => {
+        this.ordenes.set(lista);
+        this.cargarEstadosPago(lista);
+        done?.();
+      },
       error: () => done?.(),
     });
   }
@@ -217,114 +241,21 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Pago ──────────────────────────────────────────────────────────────────
+  // ── Pago: solo lectura del estado (el técnico fija el monto) ─────────────
 
-  abrirModalPago(inc: Incidente): void {
-    this.ordenPago.set(inc);
-    this.montoPago = 0;
-    this.pagoStep.set('amount');
-    this.intentData.set(null);
-    this.cardMounted = false;
-    this.cardElement?.destroy();
-    this.cardElement = null;
-    this.pagoModalAbierto.set(true);
-  }
-
-  cerrarModalPago(): void {
-    this.cardElement?.destroy();
-    this.cardElement = null;
-    this.cardMounted = false;
-    this.pagoModalAbierto.set(false);
-    this.ordenPago.set(null);
-    this.intentData.set(null);
-    this.pagoStep.set('amount');
-    this.pagoProcessing.set(false);
-  }
-
-  crearIntent(): void {
-    const inc = this.ordenPago();
-    if (!inc || this.montoPago <= 0) {
-      this.toast.error('Ingresa un monto mayor a 0.');
-      return;
-    }
-    this.pagoProcessing.set(true);
-    this.pagoSvc.crearIntent({ incidente_id: inc.id, monto: this.montoPago }).subscribe({
-      next: async (data) => {
-        this.intentData.set(data);
-        this.pagoProcessing.set(false);
-        this.pagoStep.set('card');
-
-        // Cargar Stripe.js dinámicamente (requiere: npm install @stripe/stripe-js)
-        // @ts-ignore
-        const { loadStripe } = await import('@stripe/stripe-js');
-        this.stripe = await loadStripe(data.publishable_key);
-        if (!this.stripe) return;
-
-        // Montar el CardElement después de que Angular renderice el div
-        setTimeout(() => {
-          const container = document.getElementById('stripe-card-element');
-          if (!container || this.cardMounted || !this.stripe) return;
-          const elements = this.stripe.elements();
-          this.cardElement = elements.create('card', {
-            style: {
-              base: {
-                color: '#e2e8f0',
-                fontSize: '15px',
-                fontFamily: '"Space Grotesk", sans-serif',
-                '::placeholder': { color: '#6b7280' },
-              },
-              invalid: { color: '#f85149' },
-            },
-          });
-          this.cardElement.mount(container);
-          this.cardMounted = true;
-        }, 80);
-      },
-      error: (err) => {
-        this.toast.error(err?.error?.detail ?? 'Error al crear el intento de pago.');
-        this.pagoProcessing.set(false);
-      },
+  /** Carga el estado de pago de las órdenes atendidas. */
+  cargarEstadosPago(ordenes: Incidente[]): void {
+    const atendidas = ordenes.filter(o => o.estado === 'atendido');
+    atendidas.forEach(inc => {
+      this.pagoSvc.getPago(inc.id).subscribe({
+        next:  pago => this.pagos.update(m => ({ ...m, [inc.id]: pago })),
+        error: ()   => this.pagos.update(m => ({ ...m, [inc.id]: null })),
+      });
     });
   }
 
-  async confirmarPago(): Promise<void> {
-    if (!this.stripe || !this.cardElement) return;
-    const intent = this.intentData();
-    const inc    = this.ordenPago();
-    if (!intent || !inc) return;
-
-    this.pagoProcessing.set(true);
-    const { error, paymentIntent } = await this.stripe.confirmCardPayment(
-      intent.client_secret,
-      { payment_method: { card: this.cardElement } },
-    );
-
-    if (error) {
-      this.toast.error(error.message ?? 'Error al procesar el pago.');
-      this.pagoProcessing.set(false);
-      return;
-    }
-
-    if (paymentIntent?.status === 'succeeded') {
-      this.pagoSvc.confirmarPago({
-        incidente_id:       inc.id,
-        payment_intent_id:  paymentIntent.id,
-        metodo_pago:        'tarjeta',
-      }).subscribe({
-        next: () => {
-          this.toast.success('¡Pago registrado correctamente!');
-          this.cerrarModalPago();
-          this.refrescar();
-        },
-        error: (err) => {
-          this.toast.error(err?.error?.detail ?? 'Error al confirmar el pago en el servidor.');
-          this.pagoProcessing.set(false);
-        },
-      });
-    } else {
-      this.toast.error('El pago no fue confirmado por Stripe.');
-      this.pagoProcessing.set(false);
-    }
+  pagoDeOrden(incId: string): Pago | null {
+    return this.pagos()[incId] ?? null;
   }
 
   // ── Chat ──────────────────────────────────────────────────────────────────
@@ -337,6 +268,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.chatAbierto.set(incidenteId);
       this.chatSvc.connect(incidenteId);
       this.chatInput = '';
+      // Limpiar badge al abrir el chat
+      this.noLeidos.update(m => ({ ...m, [incidenteId]: 0 }));
     }
   }
 
@@ -379,6 +312,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         return { ...t, distKm, eta };
       })
       .sort((a, b) => {
+        // Primero los que están en turno ahora, luego por distancia
+        if (a.disponible_ahora !== b.disponible_ahora) return a.disponible_ahora ? -1 : 1;
         if (a.distKm === null && b.distKm === null) return 0;
         if (a.distKm === null) return 1;
         if (b.distKm === null) return -1;
@@ -401,17 +336,6 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     return this.tecnicos().find(t => t.id === tecnicoId)?.usuario.nombre_completo ?? '—';
   }
 
-  tiempoDesde(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const min  = Math.floor(diff / 60_000);
-    if (min < 1)  return 'hace un momento';
-    if (min < 60) return `hace ${min} min`;
-    const h = Math.floor(min / 60);
-    if (h  < 24)  return `hace ${h}h`;
-    return `hace ${Math.floor(h / 24)}d`;
-  }
-
-  horaMsg(iso: string): string {
-    return new Date(iso).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-  }
+  tiempoDesde(iso: string): string { return tiempoDesdeBO(iso); }
+  horaMsg(iso: string): string     { return horaBO(iso); }
 }

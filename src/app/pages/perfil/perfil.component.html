@@ -1,0 +1,173 @@
+<div class="max-w-2xl mx-auto space-y-8 py-2">
+
+  <!-- ── Encabezado ──────────────────────────────────────────────────────── -->
+  <div class="flex items-center gap-4">
+    <div class="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+      <span class="material-icons text-accent text-2xl">manage_accounts</span>
+    </div>
+    <div>
+      <h1 class="text-xl font-bold text-app-text">Mi perfil</h1>
+      <p class="text-sm text-app-muted">{{ user()?.correo }}</p>
+    </div>
+  </div>
+
+  <!-- ── Datos personales ────────────────────────────────────────────────── -->
+  <section class="bg-app-card border border-app-border rounded-2xl p-6 space-y-5">
+    <h2 class="font-semibold text-app-text flex items-center gap-2">
+      <span class="material-icons text-base text-app-muted">person</span>
+      Datos personales
+    </h2>
+
+    <form [formGroup]="perfilForm" (ngSubmit)="guardarPerfil()" class="space-y-4">
+      <!-- Nombre -->
+      <div>
+        <label class="input-label">Nombre completo</label>
+        <input
+          formControlName="nombre_completo"
+          type="text"
+          class="input-field w-full"
+          placeholder="Tu nombre"
+        />
+        @if (perfilForm.get('nombre_completo')?.invalid && perfilForm.get('nombre_completo')?.touched) {
+          <p class="text-xs text-error mt-1">Mínimo 3 caracteres.</p>
+        }
+      </div>
+
+      <!-- Teléfono -->
+      <div>
+        <label class="input-label">Teléfono</label>
+        <input
+          formControlName="telefono"
+          type="tel"
+          class="input-field w-full"
+          placeholder="+591 7XXXXXXX"
+        />
+      </div>
+
+      <!-- Correo (solo lectura) -->
+      <div>
+        <label class="input-label">Correo electrónico</label>
+        <input
+          type="email"
+          [value]="user()?.correo ?? ''"
+          disabled
+          class="input-field w-full opacity-50 cursor-not-allowed"
+        />
+        <p class="text-xs text-app-muted mt-1">El correo no puede modificarse.</p>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button
+          type="submit"
+          [disabled]="perfilForm.invalid || perfilForm.pristine || savingPerfil()"
+          class="btn-primary flex items-center gap-2"
+        >
+          @if (savingPerfil()) {
+            <span class="material-icons text-base animate-spin">sync</span>
+            Guardando…
+          } @else {
+            <span class="material-icons text-base">save</span>
+            Guardar cambios
+          }
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── Cambiar contraseña ──────────────────────────────────────────────── -->
+  <section class="bg-app-card border border-app-border rounded-2xl p-6 space-y-5">
+    <h2 class="font-semibold text-app-text flex items-center gap-2">
+      <span class="material-icons text-base text-app-muted">lock</span>
+      Cambiar contraseña
+    </h2>
+
+    <form [formGroup]="passForm" (ngSubmit)="cambiarContrasena()" class="space-y-4">
+
+      <!-- Contraseña actual -->
+      <div>
+        <label class="input-label">Contraseña actual</label>
+        <div class="relative">
+          <input
+            formControlName="contrasena_actual"
+            [type]="showActual() ? 'text' : 'password'"
+            class="input-field w-full pr-10"
+            placeholder="••••••••"
+          />
+          <button type="button"
+                  (click)="showActual.update(v => !v)"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-app-muted hover:text-app-text">
+            <span class="material-icons text-lg">
+              {{ showActual() ? 'visibility_off' : 'visibility' }}
+            </span>
+          </button>
+        </div>
+        @if (passForm.get('contrasena_actual')?.invalid && passForm.get('contrasena_actual')?.touched) {
+          <p class="text-xs text-error mt-1">Campo requerido.</p>
+        }
+      </div>
+
+      <!-- Nueva contraseña -->
+      <div>
+        <label class="input-label">Nueva contraseña</label>
+        <div class="relative">
+          <input
+            formControlName="nueva_contrasena"
+            [type]="showNueva() ? 'text' : 'password'"
+            class="input-field w-full pr-10"
+            placeholder="Mínimo 8 caracteres"
+          />
+          <button type="button"
+                  (click)="showNueva.update(v => !v)"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-app-muted hover:text-app-text">
+            <span class="material-icons text-lg">
+              {{ showNueva() ? 'visibility_off' : 'visibility' }}
+            </span>
+          </button>
+        </div>
+        @if (passForm.get('nueva_contrasena')?.errors?.['minlength'] && passForm.get('nueva_contrasena')?.touched) {
+          <p class="text-xs text-error mt-1">Mínimo 8 caracteres.</p>
+        }
+      </div>
+
+      <!-- Confirmar nueva -->
+      <div>
+        <label class="input-label">Confirmar nueva contraseña</label>
+        <div class="relative">
+          <input
+            formControlName="confirmar"
+            [type]="showConfirm() ? 'text' : 'password'"
+            class="input-field w-full pr-10"
+            placeholder="Repite la nueva contraseña"
+          />
+          <button type="button"
+                  (click)="showConfirm.update(v => !v)"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-app-muted hover:text-app-text">
+            <span class="material-icons text-lg">
+              {{ showConfirm() ? 'visibility_off' : 'visibility' }}
+            </span>
+          </button>
+        </div>
+        @if (passForm.errors?.['mismatch'] && passForm.get('confirmar')?.touched) {
+          <p class="text-xs text-error mt-1">Las contraseñas no coinciden.</p>
+        }
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button
+          type="submit"
+          [disabled]="passForm.invalid || savingPass()"
+          class="btn-primary flex items-center gap-2"
+        >
+          @if (savingPass()) {
+            <span class="material-icons text-base animate-spin">sync</span>
+            Guardando…
+          } @else {
+            <span class="material-icons text-base">lock_reset</span>
+            Cambiar contraseña
+          }
+        </button>
+      </div>
+    </form>
+  </section>
+
+</div>

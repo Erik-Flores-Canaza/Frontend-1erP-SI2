@@ -1,0 +1,147 @@
+<div class="flex flex-col gap-6">
+
+  <!-- Header + filtro fechas -->
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="page-title">Métricas globales</h1>
+      <p class="text-app-muted text-sm mt-1">Indicadores de toda la plataforma</p>
+    </div>
+
+    <!-- Date range filter -->
+    <div class="flex flex-wrap items-end gap-2">
+      <div>
+        <label class="input-label text-xs">Desde</label>
+        <input type="date" class="input-field text-sm py-2"
+               [value]="fechaInicio()"
+               (change)="fechaInicio.set(($any($event.target)).value)" />
+      </div>
+      <div>
+        <label class="input-label text-xs">Hasta</label>
+        <input type="date" class="input-field text-sm py-2"
+               [value]="fechaFin()"
+               (change)="fechaFin.set(($any($event.target)).value)" />
+      </div>
+      <button (click)="aplicarFiltro()" class="btn-primary py-2 px-4">Filtrar</button>
+      @if (fechaInicio() || fechaFin()) {
+        <button (click)="limpiarFiltro()" class="btn-ghost py-2 px-3">Limpiar</button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      @for (i of [1,2,3,4]; track i) { <app-skeleton height="96px" /> }
+    </div>
+  }
+
+  @if (!loading() && metricas(); as m) {
+
+    <!-- KPI cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Incidentes totales -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-indigo-400">warning</span>
+          <span class="text-xs text-app-muted">Incidentes totales</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ m.incidentes.totales }}</p>
+        <p class="text-xs text-app-muted mt-1">{{ m.incidentes.resueltos }} resueltos
+          @if (m.incidentes.tasa_resolucion !== null) {
+            <span class="text-success">({{ m.incidentes.tasa_resolucion }}%)</span>
+          }
+        </p>
+      </div>
+
+      <!-- Talleres activos -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-accent">store</span>
+          <span class="text-xs text-app-muted">Talleres activos</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ m.talleres.activos }}</p>
+        <p class="text-xs text-app-muted mt-1">{{ m.talleres.aprobados }} aprobados</p>
+      </div>
+
+      <!-- Usuarios activos -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-orange">people</span>
+          <span class="text-xs text-app-muted">Usuarios activos</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ m.usuarios.activos_total }}</p>
+        <p class="text-xs text-app-muted mt-1">
+          Clientes: {{ m.usuarios.por_rol['cliente'] ?? 0 }}
+        </p>
+      </div>
+
+      <!-- Comisiones -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-success">payments</span>
+          <span class="text-xs text-app-muted">Comisiones recaudadas</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ formatMoney(m.pagos.comisiones_totales) }}</p>
+        <p class="text-xs text-app-muted mt-1">
+          Ingresos brutos: {{ formatMoney(m.pagos.ingresos_totales) }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Stats secundarias -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ m.pagos.total_transacciones }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Transacciones</p>
+      </div>
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ formatMin(m.tiempo_resolucion_prom_min) }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Tiempo prom. resolución</p>
+      </div>
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ m.talleres.totales }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Talleres totales</p>
+      </div>
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ m.usuarios.por_rol['admin_taller'] ?? 0 }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Admin de talleres</p>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Incidentes por clasificación IA -->
+      <div class="card">
+        <h3 class="section-title mb-4">Incidentes por clasificación IA</h3>
+        @if (Object.keys(m.incidentes.por_clasificacion_ia).length > 0) {
+          <div class="relative" style="height: 260px;">
+            <canvas #barCanvas></canvas>
+          </div>
+        } @else {
+          <div class="py-10 text-center text-app-muted text-sm">Sin datos en el período</div>
+        }
+      </div>
+
+      <!-- Usuarios por rol (donut) -->
+      <div class="card">
+        <h3 class="section-title mb-4">Usuarios activos por rol</h3>
+        @if (m.usuarios.activos_total > 0) {
+          <div class="relative" style="height: 260px;">
+            <canvas #donutCanvas></canvas>
+          </div>
+        } @else {
+          <div class="py-10 text-center text-app-muted text-sm">Sin usuarios activos</div>
+        }
+      </div>
+    </div>
+
+  }
+
+  @if (!loading() && !metricas()) {
+    <div class="card py-16 text-center">
+      <span class="material-icons text-5xl text-app-faint">analytics</span>
+      <p class="text-app-muted mt-3">No se pudieron cargar las métricas</p>
+      <button (click)="cargar()" class="btn-primary mt-4">Reintentar</button>
+    </div>
+  }
+
+</div>

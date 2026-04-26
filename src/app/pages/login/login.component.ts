@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/auth/auth.service';
@@ -8,7 +8,7 @@ import { TallerService } from '../../core/services/taller.service';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {
@@ -39,20 +39,28 @@ export class LoginComponent {
       next: () => {
         this.auth.loadCurrentUser().subscribe({
           next: (user) => {
-            // Bloquear acceso si no es admin_taller
-            if (user.rol.nombre !== 'admin_taller') {
-              this.auth.clearTokens();
-              this.loading.set(false);
-              this.error.set('Este panel es exclusivo para administradores de taller.');
+            const rol = user.rol.nombre;
+
+            // Superadmin → panel superadmin
+            if (rol === 'superadmin') {
+              this.router.navigate(['/superadmin']);
               return;
             }
-            // loadMyTaller() devuelve EMPTY en 404 (admin sin taller):
-            // EMPTY completa sin emitir, así que se necesita 'complete' además de 'next'.
-            this.tallerSvc.loadMyTaller().subscribe({
-              next:     () => this.router.navigate(['/dashboard']),
-              error:    () => this.router.navigate(['/dashboard']),
-              complete: () => this.router.navigate(['/dashboard']),
-            });
+
+            // Admin taller → panel principal
+            if (rol === 'admin_taller') {
+              this.tallerSvc.loadMyTaller().subscribe({
+                next:     () => this.router.navigate(['/dashboard']),
+                error:    () => this.router.navigate(['/dashboard']),
+                complete: () => this.router.navigate(['/dashboard']),
+              });
+              return;
+            }
+
+            // Cualquier otro rol (cliente, tecnico) no tiene acceso a este panel
+            this.auth.clearTokens();
+            this.loading.set(false);
+            this.error.set('Este panel es exclusivo para administradores de taller y superadmin.');
           },
           error: () => {
             this.loading.set(false);

@@ -18,6 +18,9 @@ export interface Taller {
   porcentaje_comision: number;
   activo: boolean;
   disponible: boolean;
+  /** CU-23: estado de aprobación por el superadmin */
+  estado_aprobacion: 'pendiente' | 'aprobado' | 'rechazado' | null;
+  motivo_rechazo: string | null;
   creado_en: string;
 }
 

@@ -1,8 +1,9 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { TallerService } from '../../core/services/taller.service';
-import { ToastService } from '../../core/services/toast.service';
+import { TallerService }        from '../../core/services/taller.service';
+import { TallerContextService } from '../../core/services/taller-context.service';
+import { ToastService }         from '../../core/services/toast.service';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
 import { ServicioTaller, TIPOS_SERVICIO, TipoServicio } from '../../core/models/taller.model';
 
@@ -16,11 +17,13 @@ type GeoStatus = 'idle' | 'loading' | 'success' | 'error';
 })
 export class TallerComponent implements OnInit {
   private tallerSvc = inject(TallerService);
+  private tallerCtx = inject(TallerContextService);
   private toast     = inject(ToastService);
   private fb        = inject(FormBuilder);
 
-  taller    = this.tallerSvc.taller;
-  sinTaller = this.tallerSvc.sinTaller;
+  // Usa la sucursal seleccionada en el header (selector de sucursal)
+  taller    = this.tallerCtx.tallerActivo;
+  sinTaller = this.tallerCtx.sinTalleres;
   loading   = signal(true);
   saving    = signal(false);
   editMode  = signal(false);
@@ -48,10 +51,13 @@ export class TallerComponent implements OnInit {
       this.loading.set(false);
       this.editMode.set(true);
     } else {
-      this.tallerSvc.loadMyTaller().subscribe({
-        next:     t  => { this.patchForm(t); this.loadServicios(t.id); },
-        error:    ()  => this.loading.set(false),
-        complete: ()  => { if (this.sinTaller()) { this.loading.set(false); this.editMode.set(true); } },
+      this.tallerCtx.cargarTalleres().subscribe({
+        next:     () => {
+          const t = this.tallerCtx.tallerActivo();
+          if (t) { this.patchForm(t); this.loadServicios(t.id); }
+          else   { this.loading.set(false); this.editMode.set(true); }
+        },
+        error: () => this.loading.set(false),
       });
     }
   }
@@ -110,6 +116,7 @@ export class TallerComponent implements OnInit {
     op.subscribe({
       next: (taller) => {
         this.toast.success(mensajeOk);
+        this.tallerCtx.actualizarTaller(taller);
         this.editMode.set(false);
         this.saving.set(false);
         if (!t) this.loadServicios(taller.id);

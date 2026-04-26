@@ -1,14 +1,17 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnDestroy, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule }  from '@angular/forms';
+import { Subscription } from 'rxjs';
 
-import { TallerService }    from '../../core/services/taller.service';
-import { SolicitudService } from '../../core/services/solicitud.service';
-import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
-import { HistorialItem }    from '../../core/models/historial.model';
+import { TallerContextService }  from '../../core/services/taller-context.service';
+import { SolicitudService }      from '../../core/services/solicitud.service';
+import { WsNotificacionService } from '../../core/services/ws-notificacion.service';
+import { SkeletonComponent }     from '../../shared/components/skeleton/skeleton.component';
+import { HistorialItem }         from '../../core/models/historial.model';
 import {
   CLASIFICACION_META, PRIORIDAD_META, ClasificacionIA,
 } from '../../core/models/incidente.model';
+import { fechaHoraBO } from '../../core/utils/fecha.utils';
 
 @Component({
   selector: 'app-historial',
@@ -16,13 +19,16 @@ import {
   imports: [CommonModule, FormsModule, SkeletonComponent],
   templateUrl: './historial.component.html',
 })
-export class HistorialComponent implements OnInit {
-  private tallerSvc    = inject(TallerService);
+export class HistorialComponent implements OnDestroy {
+  private tallerCtx    = inject(TallerContextService);
   private solicitudSvc = inject(SolicitudService);
+  private wsNotif      = inject(WsNotificacionService);
+
+  private wsSub?: Subscription;
+  private tallerId = '';
 
   historial   = signal<HistorialItem[]>([]);
   loading     = signal(true);
-  tallerId    = '';
   expandedId  = signal<string | null>(null);
 
   // Filtros — deben ser signals para que computed() los rastree
@@ -58,18 +64,28 @@ export class HistorialComponent implements OnInit {
     return lista;
   });
 
-  ngOnInit(): void {
-    const t = this.tallerSvc.taller();
-    if (t) {
-      this.tallerId = t.id;
-      this.cargar();
-    } else {
-      this.tallerSvc.loadMyTaller().subscribe({
-        next:     taller => { this.tallerId = taller.id; this.cargar(); },
-        error:    () => this.loading.set(false),
-        complete: () => { if (!this.tallerId) this.loading.set(false); },
-      });
-    }
+  constructor() {
+    effect(() => {
+      const t = this.tallerCtx.tallerActivo();
+      if (t) {
+        this.loading.set(true);
+        this.historial.set([]);
+        untracked(() => { this.tallerId = t.id; this.cargar(); });
+      } else if (this.tallerCtx.sinTalleres()) {
+        this.loading.set(false);
+      }
+    });
+
+    // Auto-refresh cuando el cliente paga desde la app móvil
+    this.wsSub = this.wsNotif.mensajes$.subscribe(msg => {
+      if (msg.evento === 'pago_confirmado') {
+        this.cargar();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.wsSub?.unsubscribe();
   }
 
   private cargar(): void {
@@ -106,9 +122,6 @@ export class HistorialComponent implements OnInit {
   }
 
   fechaCorta(iso: string): string {
-    return new Date(iso).toLocaleDateString('es', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
+    return fechaHoraBO(iso);
   }
 }

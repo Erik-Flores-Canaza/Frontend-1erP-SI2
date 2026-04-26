@@ -1,6 +1,6 @@
 import {
-  AfterViewInit, Component, ElementRef, inject,
-  OnDestroy, OnInit, signal, ViewChild,
+  AfterViewInit, Component, ElementRef, inject, effect, untracked,
+  OnDestroy, signal, ViewChild, computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -9,10 +9,11 @@ import {
   PointElement, Tooltip,
 } from 'chart.js';
 
-import { TallerService }    from '../../core/services/taller.service';
-import { SolicitudService } from '../../core/services/solicitud.service';
-import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
-import { MetricasTaller }   from '../../core/models/historial.model';
+import { TallerContextService }  from '../../core/services/taller-context.service';
+import { SolicitudService }      from '../../core/services/solicitud.service';
+import { SkeletonComponent }     from '../../shared/components/skeleton/skeleton.component';
+import { MetricasTaller }        from '../../core/models/historial.model';
+import { MetricasConsolidadas }  from '../../core/models/solicitud-registro.model';
 
 // Registrar solo los componentes necesarios (tree-shaking)
 Chart.register(
@@ -37,16 +38,21 @@ const CHART_DEFAULTS = {
   imports: [CommonModule, SkeletonComponent],
   templateUrl: './metricas.component.html',
 })
-export class MetricasComponent implements OnInit, AfterViewInit, OnDestroy {
+export class MetricasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('barCanvas')      barCanvas!:      ElementRef<HTMLCanvasElement>;
   @ViewChild('lineCanvas')     lineCanvas!:     ElementRef<HTMLCanvasElement>;
   @ViewChild('ingresosCanvas') ingresosCanvas!: ElementRef<HTMLCanvasElement>;
 
-  private tallerSvc    = inject(TallerService);
+  private tallerCtx    = inject(TallerContextService);
   private solicitudSvc = inject(SolicitudService);
 
-  metricas = signal<MetricasTaller | null>(null);
-  loading  = signal(true);
+  metricas      = signal<MetricasTaller | null>(null);
+  loading       = signal(true);
+  // CU-27 — Consolidado
+  tabActiva     = signal<'sucursal' | 'consolidado'>('sucursal');
+  consolidado   = signal<MetricasConsolidadas | null>(null);
+  loadingConsol = signal(false);
+  tieneSucursales = computed(() => this.tallerCtx.talleres().length > 1);
 
   private tallerId  = '';
   private barChart?:      Chart;
@@ -54,17 +60,33 @@ export class MetricasComponent implements OnInit, AfterViewInit, OnDestroy {
   private ingresosChart?: Chart;
   private viewReady = false;
 
-  ngOnInit(): void {
-    const t = this.tallerSvc.taller();
-    if (t) {
-      this.tallerId = t.id;
-      this.cargar();
-    } else {
-      this.tallerSvc.loadMyTaller().subscribe({
-        next:  taller => { this.tallerId = taller.id; this.cargar(); },
-        error: ()     => this.loading.set(false),
-      });
+  constructor() {
+    effect(() => {
+      const t = this.tallerCtx.tallerActivo();
+      if (t) {
+        this.loading.set(true);
+        this.metricas.set(null);
+        this.consolidado.set(null);
+        untracked(() => { this.tallerId = t.id; this.cargar(); });
+      } else if (this.tallerCtx.sinTalleres()) {
+        this.loading.set(false);
+      }
+    });
+  }
+
+  cambiarTab(tab: 'sucursal' | 'consolidado'): void {
+    this.tabActiva.set(tab);
+    if (tab === 'consolidado' && !this.consolidado()) {
+      this.cargarConsolidado();
     }
+  }
+
+  private cargarConsolidado(): void {
+    this.loadingConsol.set(true);
+    this.tallerCtx.getMetricasConsolidadas().subscribe({
+      next:  c => { this.consolidado.set(c); this.loadingConsol.set(false); },
+      error: () => this.loadingConsol.set(false),
+    });
   }
 
   ngAfterViewInit(): void {

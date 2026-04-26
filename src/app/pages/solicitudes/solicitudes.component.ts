@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, computed, OnInit, OnDestroy,
+  Component, inject, signal, computed, OnDestroy, effect, untracked,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,10 +9,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { interval, Subscription } from 'rxjs';
 import { switchMap, startWith } from 'rxjs/operators';
 
-import { TallerService }    from '../../core/services/taller.service';
-import { SolicitudService } from '../../core/services/solicitud.service';
-import { ToastService }     from '../../core/services/toast.service';
-import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
+import { TallerContextService }  from '../../core/services/taller-context.service';
+import { TallerService }         from '../../core/services/taller.service';
+import { SolicitudService }      from '../../core/services/solicitud.service';
+import { ToastService }          from '../../core/services/toast.service';
+import { WsNotificacionService } from '../../core/services/ws-notificacion.service';
+import { tiempoDesdeBO } from '../../core/utils/fecha.utils';
+import { SkeletonComponent }     from '../../shared/components/skeleton/skeleton.component';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -23,7 +26,8 @@ import {
   PRIORIDAD_META, CLASIFICACION_META,
 } from '../../core/models/incidente.model';
 
-const POLL_INTERVAL_MS = 15_000;
+// Poll de seguridad cada 5 min — el WS se encarga de los refreshes inmediatos
+const POLL_INTERVAL_MS = 5 * 60_000;
 
 @Component({
   selector: 'app-solicitudes',
@@ -31,12 +35,14 @@ const POLL_INTERVAL_MS = 15_000;
   imports: [CommonModule, FormsModule, MatTooltipModule, SkeletonComponent],
   templateUrl: './solicitudes.component.html',
 })
-export class SolicitudesComponent implements OnInit, OnDestroy {
+export class SolicitudesComponent implements OnDestroy {
+  private tallerCtx    = inject(TallerContextService);
   private tallerSvc    = inject(TallerService);
   private solicitudSvc = inject(SolicitudService);
   private toast        = inject(ToastService);
   private dialog       = inject(MatDialog);
   private sanitizer    = inject(DomSanitizer);
+  private wsNotif      = inject(WsNotificacionService);
 
   solicitudes  = signal<Incidente[]>([]);
   loading      = signal(true);
@@ -44,37 +50,43 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
   accionando   = signal<string | null>(null); // id de la asignación en proceso
 
   private pollSub?: Subscription;
+  private wsSub?:  Subscription;
   private tallerId = '';
 
   // Exponer metadatos para el template
   readonly prioridadMeta    = PRIORIDAD_META;
   readonly clasificacionMeta = CLASIFICACION_META;
 
-  ngOnInit(): void {
-    const t = this.tallerSvc.taller();
-    if (t) {
-      this.tallerId = t.id;
-      this.startPolling();
-    } else {
-      this.tallerSvc.loadMyTaller().subscribe({
-        next:     taller => { this.tallerId = taller.id; this.startPolling(); },
-        error:    () => this.loading.set(false),
-        complete: () => { if (!this.tallerId) this.loading.set(false); },
-      });
-    }
+  constructor() {
+    effect(() => {
+      const t = this.tallerCtx.tallerActivo();
+      if (t) {
+        untracked(() => {
+          this.tallerId = t.id;
+          // Reiniciar poll para la nueva sucursal
+          this.pollSub?.unsubscribe();
+          this.loading.set(true);
+          this.solicitudes.set([]);
+          this.startPolling();
+        });
+      } else if (this.tallerCtx.sinTalleres()) {
+        this.loading.set(false);
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.pollSub?.unsubscribe();
+    this.wsSub?.unsubscribe();
   }
 
   private startPolling(): void {
+    // Carga inicial + poll de seguridad cada 5 min
     this.pollSub = interval(POLL_INTERVAL_MS)
       .pipe(
         startWith(0),
         switchMap(() => {
-          if (this.loading()) return this.solicitudSvc.getSolicitudes(this.tallerId);
-          this.actualizando.set(true);
+          if (!this.loading()) this.actualizando.set(true);
           return this.solicitudSvc.getSolicitudes(this.tallerId);
         }),
       )
@@ -89,6 +101,13 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
           this.actualizando.set(false);
         },
       });
+
+    // Refresh inmediato cuando llega una nueva solicitud por WS
+    this.wsSub = this.wsNotif.mensajes$.subscribe(msg => {
+      if (msg.evento === 'nueva_solicitud') {
+        this.refrescar();
+      }
+    });
   }
 
   /** Obtiene la asignación pendiente (sin respuesta) del incidente */
@@ -180,14 +199,5 @@ export class SolicitudesComponent implements OnInit, OnDestroy {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
   }
 
-  /** Tiempo transcurrido en formato legible */
-  tiempoDesde(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const min  = Math.floor(diff / 60_000);
-    if (min < 1)  return 'hace un momento';
-    if (min < 60) return `hace ${min} min`;
-    const h = Math.floor(min / 60);
-    if (h  < 24)  return `hace ${h}h`;
-    return `hace ${Math.floor(h / 24)}d`;
-  }
+  tiempoDesde(iso: string): string { return tiempoDesdeBO(iso); }
 }

@@ -1,0 +1,120 @@
+<div class="flex flex-col gap-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="page-title">Gestión de usuarios</h1>
+      <p class="text-app-muted text-sm mt-1">Activar y desactivar cuentas de la plataforma </p>
+    </div>
+    <button (click)="cargar()" class="btn-ghost flex items-center gap-2">
+      <span class="material-icons text-xl">refresh</span>
+      Actualizar
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="flex flex-wrap gap-3">
+    <!-- Filtro por rol -->
+    <select [(ngModel)]="filtroRol" (ngModelChange)="filtroRol.set($event)"
+            class="input-field w-auto min-w-[140px]">
+      <option value="">Todos los roles</option>
+      @for (r of roles; track r) {
+        <option [value]="r">{{ r }}</option>
+      }
+    </select>
+
+    <!-- Filtro por estado -->
+    <select class="input-field w-auto min-w-[140px]"
+            [value]="filtroActivo()"
+            (change)="filtroActivo.set(($any($event.target)).value)">
+      <option value="">Activo/Inactivo</option>
+      <option value="true">Solo activos</option>
+      <option value="false">Solo inactivos</option>
+    </select>
+
+    <span class="flex items-center text-sm text-app-muted">
+      {{ usuariosFiltrados().length }} usuario(s)
+    </span>
+  </div>
+
+  <!-- Error -->
+  @if (errorMsg()) {
+    <div class="px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm">
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <!-- Tabla -->
+  <div class="card p-0 overflow-hidden">
+    @if (loading()) {
+      <div class="p-6 flex flex-col gap-3">
+        @for (i of [1,2,3,4,5]; track i) {
+          <app-skeleton height="52px" />
+        }
+      </div>
+    } @else if (usuariosFiltrados().length === 0) {
+      <div class="py-16 text-center">
+        <span class="material-icons text-5xl text-app-faint">people</span>
+        <p class="text-app-muted mt-3">No hay usuarios con ese filtro</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Miembro desde</th>
+              <th class="text-center">Estado</th>
+              <th class="text-center">Activar / Desactivar</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of usuariosFiltrados(); track u.id) {
+              <tr>
+                <td>
+                  <div class="font-medium text-app-text">{{ u.nombre_completo }}</div>
+                  <div class="text-xs text-app-muted">{{ u.correo }}</div>
+                </td>
+                <td>
+                  <span [class]="rolBadge(u.rol.nombre)">{{ u.rol.nombre }}</span>
+                </td>
+                <td class="text-sm text-app-muted">{{ fechaCorta(u.creado_en) }}</td>
+                <td class="text-center">
+                  @if (u.activo) {
+                    <span class="badge-success">Activo</span>
+                  } @else {
+                    <span class="badge-danger">Inactivo</span>
+                  }
+                </td>
+                <td class="text-center">
+                  @if (u.id === yo()?.id) {
+                    <span class="text-xs text-app-faint italic">Tu cuenta</span>
+                  } @else {
+                    <!-- Toggle switch -->
+                    <button
+                      (click)="toggleActivo(u)"
+                      [disabled]="accionando() === u.id"
+                      class="relative inline-flex items-center h-6 w-11 rounded-full
+                             transition-colors duration-200 focus:outline-none
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                      [class]="u.activo ? 'bg-success/30' : 'bg-app-elevated border border-app-border'"
+                      [title]="u.activo ? 'Desactivar cuenta' : 'Activar cuenta'"
+                    >
+                      <span
+                        class="inline-block w-4 h-4 rounded-full shadow transform transition-transform duration-200"
+                        [class]="u.activo
+                          ? 'translate-x-6 bg-success'
+                          : 'translate-x-1 bg-app-muted'"
+                      ></span>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

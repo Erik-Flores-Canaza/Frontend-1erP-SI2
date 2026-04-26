@@ -3,7 +3,10 @@
   <!-- Page header -->
   <div class="mb-8">
     <h1 class="page-title">Turnos</h1>
-    <p class="text-app-muted text-sm mt-1">Asigna y consulta los turnos de cada técnico</p>
+    <p class="text-app-muted text-sm mt-1">
+      Define el horario semanal de cada técnico. Solo los técnicos con turno activo ahora
+      pueden ser asignados a órdenes.
+    </p>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -12,7 +15,7 @@
     <div class="lg:col-span-1">
       <div class="card p-0 overflow-hidden">
         <div class="px-4 py-3 border-b border-app-border">
-          <h2 class="section-title text-sm">Seleccionar técnico</h2>
+          <h2 class="section-title text-sm">Técnicos</h2>
         </div>
 
         @if (loadingTecnicos()) {
@@ -42,22 +45,29 @@
                 [class.border-l-2]="selectedTecnico()?.id === t.id"
                 [class.border-accent]="selectedTecnico()?.id === t.id"
               >
-                <div class="w-9 h-9 rounded-full bg-app-elevated flex items-center justify-center flex-shrink-0"
-                     [class.bg-accent]="selectedTecnico()?.id === t.id">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                     [class.bg-accent]="selectedTecnico()?.id === t.id"
+                     [class.bg-app-elevated]="selectedTecnico()?.id !== t.id">
                   <span class="text-sm font-bold"
                         [class.text-white]="selectedTecnico()?.id === t.id"
                         [class.text-app-muted]="selectedTecnico()?.id !== t.id">
                     {{ t.usuario.nombre_completo.charAt(0).toUpperCase() }}
                   </span>
                 </div>
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p class="font-medium text-sm text-app-text truncate">{{ t.usuario.nombre_completo }}</p>
-                  <p class="text-xs" [class]="t.disponible ? 'text-success' : 'text-app-faint'">
-                    {{ t.disponible ? 'Disponible' : 'No disponible' }}
-                  </p>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    @if (t.disponible_ahora) {
+                      <span class="w-1.5 h-1.5 rounded-full bg-success inline-block"></span>
+                      <span class="text-xs text-success">En turno ahora</span>
+                    } @else {
+                      <span class="w-1.5 h-1.5 rounded-full bg-app-faint inline-block"></span>
+                      <span class="text-xs text-app-faint">Fuera de turno</span>
+                    }
+                  </div>
                 </div>
                 @if (selectedTecnico()?.id === t.id) {
-                  <span class="material-icons text-accent text-base ml-auto">chevron_right</span>
+                  <span class="material-icons text-accent text-base">chevron_right</span>
                 }
               </button>
             }
@@ -66,18 +76,18 @@
       </div>
     </div>
 
-    <!-- Panel derecho: turnos del técnico seleccionado -->
+    <!-- Panel derecho: horario semanal -->
     <div class="lg:col-span-2">
 
       @if (!selectedTecnico()) {
         <div class="card flex flex-col items-center justify-center py-20">
           <span class="material-icons text-app-faint text-5xl mb-4">calendar_month</span>
-          <p class="text-app-muted text-center">Selecciona un técnico para ver y gestionar sus turnos</p>
+          <p class="text-app-muted text-center">Selecciona un técnico para ver su horario semanal</p>
         </div>
 
       } @else {
 
-        <!-- Header del técnico seleccionado -->
+        <!-- Header -->
         <div class="card mb-4 flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
@@ -87,31 +97,44 @@
             </div>
             <div>
               <p class="font-semibold text-app-text">{{ selectedTecnico()!.usuario.nombre_completo }}</p>
-              <p class="text-xs text-app-muted">{{ turnos().length }} turnos registrados</p>
+              <p class="text-xs text-app-muted">{{ turnos().length }} / 7 días con turno asignado</p>
             </div>
           </div>
-          <button (click)="showForm.update(v => !v)" class="btn-primary flex items-center gap-2">
-            <span class="material-icons text-base">{{ showForm() ? 'close' : 'add' }}</span>
-            {{ showForm() ? 'Cancelar' : 'Agregar turno' }}
-          </button>
+          @if (diasDisponibles().length > 0) {
+            <button (click)="showForm.update(v => !v)" class="btn-primary flex items-center gap-2">
+              <span class="material-icons text-base">{{ showForm() ? 'close' : 'add' }}</span>
+              {{ showForm() ? 'Cancelar' : 'Agregar turno' }}
+            </button>
+          }
         </div>
 
         <!-- Formulario nuevo turno -->
         @if (showForm()) {
-          <div class="card mb-4 border-accent/30">
+          <div class="card mb-4 border border-accent/30">
             <h3 class="section-title text-base mb-4 flex items-center gap-2">
-              <span class="material-icons text-accent text-base">add_circle</span> Nuevo turno
+              <span class="material-icons text-accent text-base">add_circle</span>
+              Nuevo turno
             </h3>
             <form [formGroup]="turnoForm" (ngSubmit)="saveTurno()" class="grid grid-cols-3 gap-4">
-              <div>
-                <label class="input-label">Fecha</label>
-                <input type="date" formControlName="fecha_turno"
-                       [min]="today" class="input-field font-mono text-sm">
+              <!-- Día -->
+              <div class="col-span-3 sm:col-span-1">
+                <label class="input-label">Día de la semana</label>
+                <select formControlName="dia_semana" class="input-field">
+                  <option [value]="null" disabled>Seleccionar...</option>
+                  @for (d of diasDisponibles(); track d.index) {
+                    <option [value]="d.index">{{ d.nombre }}</option>
+                  }
+                </select>
+                @if (turnoForm.get('dia_semana')?.invalid && turnoForm.get('dia_semana')?.touched) {
+                  <p class="input-error">Selecciona un día</p>
+                }
               </div>
+              <!-- Hora inicio -->
               <div>
                 <label class="input-label">Hora inicio</label>
                 <input type="time" formControlName="hora_inicio" class="input-field font-mono text-sm">
               </div>
+              <!-- Hora fin -->
               <div>
                 <label class="input-label">Hora fin</label>
                 <input type="time" formControlName="hora_fin" class="input-field font-mono text-sm">
@@ -134,70 +157,71 @@
           </div>
         }
 
-        <!-- Lista de turnos -->
-        <div class="card p-0 overflow-hidden">
-          @if (loadingTurnos()) {
-            <div class="p-6 space-y-3">
-              @for (_ of [1,2,3]; track $index) {
-                <app-skeleton height="3.5rem" radius="8px"/>
-              }
-            </div>
-
-          } @else if (turnos().length === 0) {
-            <div class="py-16 text-center">
-              <span class="material-icons text-app-faint text-4xl mb-3 block">event_busy</span>
-              <p class="text-app-muted">No hay turnos registrados para este técnico</p>
-            </div>
-
-          } @else {
-            <div class="px-4 py-3 border-b border-app-border flex items-center gap-2">
-              <span class="material-icons text-sm text-app-muted">schedule</span>
-              <span class="text-xs text-app-muted font-medium uppercase tracking-wider">Todos los turnos</span>
+        <!-- Grilla semanal -->
+        @if (loadingTurnos()) {
+          <div class="card space-y-3">
+            @for (_ of [1,2,3,4,5,6,7]; track $index) {
+              <app-skeleton height="3.5rem" radius="8px"/>
+            }
+          </div>
+        } @else {
+          <div class="card p-0 overflow-hidden">
+            <div class="px-4 py-3 border-b border-app-border">
+              <p class="text-xs font-semibold text-app-muted uppercase tracking-wider">Horario semanal</p>
             </div>
 
             <div class="divide-y divide-app-subtle">
-              @for (turno of turnos(); track turno.id) {
-                <div class="flex items-center gap-4 px-4 py-3.5"
-                     [class.opacity-50]="isPast(turno.fecha_turno)">
+              @for (turno of grillaSemanal(); track $index) {
+                <div class="flex items-center gap-4 px-4 py-3"
+                     [class.bg-accent\/5]="$index === diaHoy">
 
-                  <!-- Fecha icon -->
-                  <div class="w-12 h-12 rounded-lg flex flex-col items-center justify-center flex-shrink-0"
-                       [class]="isToday(turno.fecha_turno) ? 'bg-accent text-white' :
-                                 isPast(turno.fecha_turno) ? 'bg-app-elevated text-app-faint' :
-                                 'bg-app-elevated text-app-muted'">
-                    <span class="text-xs font-bold leading-none">
-                      {{ turno.fecha_turno | date:'dd' }}
-                    </span>
-                    <span class="text-[10px] uppercase leading-none">
-                      {{ turno.fecha_turno | date:'MMM' }}
-                    </span>
+                  <!-- Día -->
+                  <div class="w-24 flex-shrink-0">
+                    <p class="text-sm font-semibold"
+                       [class.text-accent]="$index === diaHoy"
+                       [class.text-app-text]="$index !== diaHoy">
+                      {{ diasSemana[$index] }}
+                    </p>
+                    @if ($index === diaHoy) {
+                      <span class="text-[10px] text-accent font-medium">Hoy</span>
+                    }
                   </div>
 
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Turno o vacío -->
+                  @if (turno) {
+                    <div class="flex-1 flex items-center gap-3">
+                      <span class="material-icons text-success text-base">check_circle</span>
                       <span class="font-mono text-sm text-app-text">
                         {{ formatHora(turno.hora_inicio) }} — {{ formatHora(turno.hora_fin) }}
                       </span>
-                      @if (turno.en_servicio) {
-                        <span class="badge-warning">En servicio</span>
-                      }
-                      @if (isToday(turno.fecha_turno)) {
-                        <span class="badge-success">Hoy</span>
+                      @if ($index === diaHoy) {
+                        <span class="badge badge-success text-[11px]">Activo ahora</span>
                       }
                     </div>
-                    <p class="text-xs text-app-muted mt-0.5">
-                      {{ turno.fecha_turno | date:'EEEE, d MMMM yyyy':'':'es' }}
-                    </p>
-                  </div>
-
-                  @if (isPast(turno.fecha_turno)) {
-                    <span class="text-xs text-app-faint">Pasado</span>
+                    <button
+                      (click)="eliminarTurno(turno)"
+                      [disabled]="deleting() === turno.id"
+                      class="text-app-faint hover:text-danger transition-colors disabled:opacity-50"
+                      title="Eliminar turno"
+                    >
+                      @if (deleting() === turno.id) {
+                        <span class="material-icons text-base animate-spin">sync</span>
+                      } @else {
+                        <span class="material-icons text-base">delete_outline</span>
+                      }
+                    </button>
+                  } @else {
+                    <div class="flex-1 flex items-center gap-2 text-app-faint">
+                      <span class="material-icons text-base">remove</span>
+                      <span class="text-sm">Sin turno</span>
+                    </div>
                   }
+
                 </div>
               }
             </div>
-          }
-        </div>
+          </div>
+        }
 
       }
     </div>

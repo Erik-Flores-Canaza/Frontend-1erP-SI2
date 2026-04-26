@@ -1,8 +1,8 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
-import { TallerService } from '../../core/services/taller.service';
+import { TallerContextService } from '../../core/services/taller-context.service';
 import { TecnicoService } from '../../core/services/tecnico.service';
 import { ToastService } from '../../core/services/toast.service';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
@@ -19,14 +19,14 @@ import { Tecnico } from '../../core/models/tecnico.model';
   imports: [CommonModule, ReactiveFormsModule, SkeletonComponent, PhoneInputComponent],
   templateUrl: './tecnicos.component.html',
 })
-export class TecnicosComponent implements OnInit {
-  private tallerSvc  = inject(TallerService);
+export class TecnicosComponent {
+  private tallerCtx  = inject(TallerContextService);
   private tecnicoSvc = inject(TecnicoService);
   private toast      = inject(ToastService);
   private dialog     = inject(MatDialog);
   private fb         = inject(FormBuilder);
 
-  taller   = this.tallerSvc.taller;
+  taller   = this.tallerCtx.tallerActivo;
   loading  = signal(true);
   saving   = signal(false);
   deleting = signal<string | null>(null);
@@ -46,16 +46,16 @@ export class TecnicosComponent implements OnInit {
   get correo()     { return this.form.get('correo')!; }
   get contrasena() { return this.form.get('contrasena')!; }
 
-  ngOnInit(): void {
-    const t = this.taller();
-    if (t) this.loadTecnicos(t.id);
-    else {
-      this.tallerSvc.loadMyTaller().subscribe({
-        next:     t  => this.loadTecnicos(t.id),
-        error:    () => this.loading.set(false),
-        complete: () => { if (!this.taller()) this.loading.set(false); },
-      });
-    }
+  constructor() {
+    effect(() => {
+      const t = this.tallerCtx.tallerActivo();
+      if (t) {
+        this.loading.set(true);
+        untracked(() => this.loadTecnicos(t.id));
+      } else if (this.tallerCtx.sinTalleres()) {
+        this.loading.set(false);
+      }
+    });
   }
 
   private loadTecnicos(tallerId: string): void {
@@ -94,7 +94,7 @@ export class TecnicosComponent implements OnInit {
 
   saveForm(): void {
     if (this.form.invalid || this.saving()) return;
-    const taller = this.taller();
+    const taller = this.tallerCtx.tallerActivo();
     if (!taller) return;
 
     this.saving.set(true);

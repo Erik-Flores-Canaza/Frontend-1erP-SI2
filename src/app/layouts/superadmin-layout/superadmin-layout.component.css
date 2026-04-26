@@ -1,0 +1,32 @@
+/* Superadmin sidebar — acento índigo/violeta para diferenciarlo del admin_taller */
+:host {
+  --sa-accent:     #6366f1;   /* indigo-500 */
+  --sa-accent-dim: #4f46e5;   /* indigo-600 */
+  --sa-bg:         #0f0f1a;   /* ligeramente más oscuro */
+  --sa-card:       #14142b;
+  --sa-border:     #2d2d5e;
+}
+
+.sa-sidebar {
+  background-color: var(--sa-bg);
+}
+
+.sa-accent-bg  { background-color: var(--sa-accent); }
+.sa-accent-text { color: var(--sa-accent); }
+
+.sa-nav-active {
+  background-color: var(--sa-accent) !important;
+  color: white !important;
+}
+
+.sa-nav-active .material-icons {
+  color: white !important;
+}
+
+.sa-nav-item {
+  text-decoration: none;
+}
+
+.border-sa-border {
+  border-color: var(--sa-border);
+}

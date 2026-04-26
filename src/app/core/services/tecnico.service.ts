@@ -40,4 +40,8 @@ export class TecnicoService {
   createTurno(tecnicoId: string, body: TurnoCreate) {
     return this.http.post<Turno>(`${this.api}/tecnicos/${tecnicoId}/turnos`, body);
   }
+
+  deleteTurno(tecnicoId: string, turnoId: string) {
+    return this.http.delete<void>(`${this.api}/tecnicos/${tecnicoId}/turnos/${turnoId}`);
+  }
 }

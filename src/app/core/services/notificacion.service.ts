@@ -42,4 +42,9 @@ export class NotificacionService {
   refrescarContador() {
     this.getNotificaciones(true).subscribe();
   }
+
+  /** Incrementa el badge en 1 (llamado por WsNotificacionService al recibir push en tiempo real) */
+  incrementarNoLeidas() {
+    this._noLeidas.update(n => n + 1);
+  }
 }

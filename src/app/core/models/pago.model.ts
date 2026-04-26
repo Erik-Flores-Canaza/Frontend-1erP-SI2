@@ -1,6 +1,6 @@
 export interface CrearIntentRequest {
   incidente_id: string;
-  monto: number;
+  // El monto ya fue fijado por el técnico — no lo ingresa el admin ni el cliente
 }
 
 export interface CrearIntentResponse {
