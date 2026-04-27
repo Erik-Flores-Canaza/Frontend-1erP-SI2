@@ -132,12 +132,20 @@
               <!-- Hora inicio -->
               <div>
                 <label class="input-label">Hora inicio</label>
-                <input type="time" formControlName="hora_inicio" class="input-field font-mono text-sm">
+                <select formControlName="hora_inicio" class="input-field font-mono text-sm">
+                  @for (h of horas; track h) {
+                    <option [value]="h">{{ h }}</option>
+                  }
+                </select>
               </div>
               <!-- Hora fin -->
               <div>
                 <label class="input-label">Hora fin</label>
-                <input type="time" formControlName="hora_fin" class="input-field font-mono text-sm">
+                <select formControlName="hora_fin" class="input-field font-mono text-sm">
+                  @for (h of horas; track h) {
+                    <option [value]="h">{{ h }}</option>
+                  }
+                </select>
               </div>
               <div class="col-span-3 flex justify-end">
                 <button type="submit" [disabled]="turnoForm.invalid || saving()"

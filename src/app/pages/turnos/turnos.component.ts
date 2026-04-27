@@ -32,6 +32,13 @@ export class TurnosComponent {
 
   readonly diasSemana = DIAS_SEMANA;
 
+  // Horas en formato 24h para el selector (00:00 … 23:30)
+  readonly horas: string[] = Array.from({ length: 48 }, (_, i) => {
+    const h = Math.floor(i / 2).toString().padStart(2, '0');
+    const m = i % 2 === 0 ? '00' : '30';
+    return `${h}:${m}`;
+  });
+
   // Días que ya tienen turno asignado (para deshabilitar en el select)
   diasOcupados = computed(() => new Set(this.turnos().map(t => t.dia_semana)));
 
