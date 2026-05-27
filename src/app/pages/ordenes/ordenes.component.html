@@ -2,7 +2,7 @@
 <div class="flex items-center justify-between mb-6">
   <div>
     <h1 class="page-title">Órdenes activas</h1>
-    <p class="text-app-muted text-sm mt-1">Solicitudes aceptadas — asigna técnico y gestiona el estado</p>
+    <p class="text-app-muted text-sm mt-1">Asigna técnico y sigue el avance — las transiciones siguientes las dispara el técnico</p>
   </div>
   <button (click)="refrescar()" class="btn-ghost flex items-center gap-1.5 text-sm"
           matTooltip="Recargar">
@@ -34,7 +34,7 @@
     </div>
     <h3 class="font-semibold text-app-text mb-2">Sin órdenes activas</h3>
     <p class="text-app-muted text-sm max-w-xs">
-      Las solicitudes que aceptes aparecerán aquí para que puedas asignar un técnico.
+      Cuando un cliente acepte una de tus cotizaciones, la orden aparecerá aquí lista para asignar técnico.
     </p>
   </div>
 }
@@ -48,11 +48,10 @@
       @let eMeta = estadoMeta[inc.estado];
       @let pMeta = prioridadMeta[inc.prioridad];
       @let cMeta = inc.clasificacion_ia ? clasificacionMeta[inc.clasificacion_ia] : null;
-      @let enAccion = accionando() === inc.id;
-      @let siguienteEstado = ESTADOS_AVANZAR[inc.estado];
+      @let pasoIdx = pasoActual(inc.estado);
       @let chatActivo = chatAbierto() === inc.id;
 
-      <div class="card" [class.opacity-60]="enAccion">
+      <div class="card">
 
         <!-- Top: clasificación + badges -->
         <div class="flex items-start justify-between gap-3 mb-4">
@@ -75,6 +74,50 @@
             </span>
           </div>
         </div>
+
+        <!-- Progress bar de los 4 pasos del flujo -->
+        @if (pasoIdx >= 0) {
+          <div class="mb-4 bg-app-elevated rounded-xl px-4 py-3">
+            <div class="flex items-center justify-between gap-2">
+              @for (paso of flujoPasos; track paso.estado; let i = $index) {
+                @let activo = i <= pasoIdx;
+                @let actual = i === pasoIdx;
+                <div class="flex flex-col items-center flex-1 min-w-0">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300"
+                       [class.bg-accent]="activo"
+                       [class.text-white]="activo"
+                       [class.bg-app-card]="!activo"
+                       [class.text-app-faint]="!activo"
+                       [class.border]="!activo"
+                       [class.border-app-border]="!activo"
+                       [class.ring-2]="actual"
+                       [class.ring-accent\/40]="actual">
+                    <span class="material-icons text-base">{{ paso.icon }}</span>
+                  </div>
+                  <p class="text-[10px] mt-1 text-center"
+                     [class.text-app-text]="activo"
+                     [class.font-semibold]="actual"
+                     [class.text-app-faint]="!activo">
+                    {{ paso.label }}
+                  </p>
+                </div>
+                @if (i < flujoPasos.length - 1) {
+                  <div class="flex-1 h-0.5 -mt-4 transition-colors duration-300"
+                       [class.bg-accent]="i < pasoIdx"
+                       [class.bg-app-border]="i >= pasoIdx"></div>
+                }
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Banner: qué se espera ahora -->
+        @if (esperandoAccion(inc); as msg) {
+          <div class="flex items-start gap-2 mb-4 px-3 py-2 rounded-lg bg-accent/5 border border-accent/20">
+            <span class="material-icons text-accent text-base mt-0.5">info</span>
+            <p class="text-sm text-app-text">{{ msg }}</p>
+          </div>
+        }
 
         <!-- Resumen IA -->
         @if (inc.resumen_ia) {
@@ -120,13 +163,19 @@
 
         <!-- Técnico asignado -->
         @if (asigAceptada?.tecnico_id) {
-          <div class="flex items-center gap-2 mb-4 bg-success/5 border border-success/20 rounded-lg px-3 py-2">
+          <div class="flex items-center gap-2 mb-4 bg-success/5 border border-success/20 rounded-lg px-3 py-2 flex-wrap">
             <span class="material-icons text-success text-base">engineering</span>
             <span class="text-sm text-success font-medium">
               Técnico: {{ tecnicoNombre(asigAceptada!.tecnico_id!) }}
             </span>
             @if (asigAceptada?.eta_minutos) {
-              <span class="text-xs text-app-muted ml-auto">ETA: {{ asigAceptada!.eta_minutos }} min</span>
+              <span class="text-xs text-app-muted">ETA: {{ asigAceptada!.eta_minutos }} min</span>
+            }
+            @if (asigAceptada?.tecnico_llego_en) {
+              <span class="text-xs text-app-muted ml-auto flex items-center gap-1">
+                <span class="material-icons text-sm">place</span>
+                Llegó {{ tiempoDesde(asigAceptada!.tecnico_llego_en!) }}
+              </span>
             }
           </div>
         }
@@ -134,8 +183,8 @@
         <!-- Acciones -->
         <div class="flex items-center gap-2 flex-wrap">
 
-          <!-- Asignar técnico (si aún no hay) -->
-          @if (sinTecnico) {
+          <!-- Asignar técnico (solo en taller_asignado, sin técnico) -->
+          @if (sinTecnico && inc.estado === 'taller_asignado') {
             <button (click)="abrirModalTecnico(inc)"
                     class="btn-primary flex items-center gap-2 text-sm">
               <span class="material-icons text-base">person_add</span>
@@ -143,22 +192,8 @@
             </button>
           }
 
-          <!-- Avanzar estado -->
-          @if (siguienteEstado && asigAceptada?.tecnico_id) {
-            <button (click)="avanzarEstado(inc)"
-                    [disabled]="enAccion"
-                    class="btn-ghost flex items-center gap-2 text-sm border border-app-border">
-              @if (enAccion) {
-                <span class="material-icons text-base animate-spin">sync</span>
-              } @else {
-                <span class="material-icons text-base">arrow_forward</span>
-              }
-              Marcar como "{{ estadoMeta[siguienteEstado].label }}"
-            </button>
-          }
-
-          <!-- Estado de pago (cuando está atendido — lo fija el técnico) -->
-          @if (inc.estado === 'atendido') {
+          <!-- Estado de pago (cuando está finalizado) -->
+          @if (inc.estado === 'finalizado') {
             @let pago = pagoDeOrden(inc.id);
             @if (pago === null) {
               <div class="flex items-center gap-1.5 text-xs text-app-muted bg-app-elevated px-3 py-1.5 rounded-lg">
@@ -192,13 +227,11 @@
             >
               <span class="material-icons text-base">chat</span>
               <span>Chat</span>
-              <!-- Badge de mensajes no leídos -->
               @if (!chatActivo && mensajesNoLeidos > 0) {
                 <span class="flex items-center justify-center min-w-[1.1rem] h-[1.1rem] rounded-full bg-error text-white text-[10px] font-bold leading-none px-1">
                   {{ mensajesNoLeidos > 9 ? '9+' : mensajesNoLeidos }}
                 </span>
               } @else {
-                <!-- Dot de estado WebSocket -->
                 <span class="w-2 h-2 rounded-full ml-0.5 flex-shrink-0"
                       [class.bg-success]="chatActivo && chatSvc.connected()"
                       [class.bg-app-muted]="chatActivo && chatSvc.connecting()"
@@ -215,7 +248,6 @@
         @if (chatActivo) {
           <div class="mt-4 border-t border-app-border pt-4">
 
-            <!-- Estado de conexión -->
             <div class="flex items-center justify-between mb-3">
               <p class="text-xs text-app-faint font-semibold uppercase tracking-wide flex items-center gap-1.5">
                 <span class="material-icons text-sm">chat</span>
@@ -235,7 +267,6 @@
               </div>
             </div>
 
-            <!-- Mensajes -->
             <div
               id="chat-messages-container"
               class="bg-app-elevated rounded-xl px-3 py-3 space-y-2 overflow-y-auto mb-3"
@@ -275,7 +306,6 @@
               }
             </div>
 
-            <!-- Input -->
             <div class="flex gap-2">
               <input
                 type="text"
@@ -403,4 +433,3 @@
     </div>
   </div>
 }
-

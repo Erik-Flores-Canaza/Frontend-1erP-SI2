@@ -10,20 +10,15 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TallerContextService } from '../../core/services/taller-context.service';
 import { TecnicoService }   from '../../core/services/tecnico.service';
 import { SolicitudService } from '../../core/services/solicitud.service';
-import { IncidenteService } from '../../core/services/incidente.service';
 import { PagoService }      from '../../core/services/pago.service';
 import { ChatService }          from '../../core/services/chat.service';
 import { ToastService }         from '../../core/services/toast.service';
 import { WsNotificacionService } from '../../core/services/ws-notificacion.service';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton.component';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 import {
   Incidente, AsignacionResumen, EstadoIncidente,
-  ESTADO_META, PRIORIDAD_META, CLASIFICACION_META,
+  ESTADO_META, PRIORIDAD_META, CLASIFICACION_META, FLUJO_PASOS,
 } from '../../core/models/incidente.model';
 import { Pago } from '../../core/models/pago.model';
 import { environment } from '../../../environments/environment';
@@ -45,7 +40,6 @@ export class OrdenesComponent implements OnDestroy {
   private tallerCtx    = inject(TallerContextService);
   private tecnicoSvc   = inject(TecnicoService);
   private solicitudSvc = inject(SolicitudService);
-  private incidenteSvc = inject(IncidenteService);
   private pagoSvc      = inject(PagoService);
   readonly chatSvc     = inject(ChatService);
   private toast        = inject(ToastService);
@@ -55,7 +49,6 @@ export class OrdenesComponent implements OnDestroy {
   ordenes   = signal<Incidente[]>([]);
   tecnicos  = signal<Tecnico[]>([]);
   loading   = signal(true);
-  accionando = signal<string | null>(null);
 
   // ── Modal: asignar técnico ────────────────────────────────────────────────
   modalAbierto      = signal(false);
@@ -65,14 +58,12 @@ export class OrdenesComponent implements OnDestroy {
   asignandoTecnico  = signal(false);
   notificandoTecnico = signal<string | null>(null);
 
-  // ── Estado de pago por incidente ─────────────────────────────────────────
-  // El técnico fija el monto; el admin solo consulta el estado.
+  // Estado de pago por incidente (técnico fija el monto; admin solo consulta)
   pagos = signal<Record<string, Pago | null>>({});
 
   // ── Chat inline ───────────────────────────────────────────────────────────
-  chatAbierto  = signal<string | null>(null);  // incidente_id con chat abierto
+  chatAbierto  = signal<string | null>(null);
   chatInput    = '';
-  /** Mensajes no leídos por incidente (se acumulan cuando el chat está cerrado). */
   noLeidos     = signal<Record<string, number>>({});
 
   noLeidosDe(incId: string): number {
@@ -83,13 +74,7 @@ export class OrdenesComponent implements OnDestroy {
   readonly estadoMeta        = ESTADO_META;
   readonly prioridadMeta     = PRIORIDAD_META;
   readonly clasificacionMeta = CLASIFICACION_META;
-
-  readonly ESTADOS_AVANZAR: Record<EstadoIncidente, EstadoIncidente | null> = {
-    pendiente:  'en_proceso',
-    en_proceso: 'atendido',
-    atendido:   null,
-    cancelado:  null,
-  };
+  readonly flujoPasos        = FLUJO_PASOS;
 
   private tallerId = '';
   private wsSub?: Subscription;
@@ -107,7 +92,7 @@ export class OrdenesComponent implements OnDestroy {
       }
     });
 
-    // Reaccionar a eventos WS: pago confirmado y nuevos mensajes de chat
+    // Reaccionar a eventos WS: pago confirmado, mensajes, cambios de estado
     this.wsSub = this.wsNotif.mensajes$.subscribe(msg => {
       if (msg.evento === 'pago_confirmado' && msg.incidente_id) {
         const incId = msg.incidente_id;
@@ -121,10 +106,18 @@ export class OrdenesComponent implements OnDestroy {
 
       if (msg.evento === 'nuevo_mensaje_chat' && msg.incidente_id) {
         const incId = msg.incidente_id;
-        // Solo incrementar badge si el chat de ese incidente no está abierto ahora mismo
         if (this.chatAbierto() !== incId) {
           this.noLeidos.update(m => ({ ...m, [incId]: (m[incId] ?? 0) + 1 }));
         }
+      }
+
+      // CU-31: si el técnico marca llegada o completa, refrescar lista
+      if (
+        msg.evento === 'tecnico_en_sitio' ||
+        msg.evento === 'servicio_completado' ||
+        msg.evento === 'auxilio_en_camino'
+      ) {
+        this.cargarOrdenes();
       }
     });
   }
@@ -197,7 +190,7 @@ export class OrdenesComponent implements OnDestroy {
     this.asignandoTecnico.set(true);
     this.solicitudSvc.asignarTecnico(asig.id, { tecnico_id: this.tecnicoElegido() }).subscribe({
       next: () => {
-        this.toast.success('Técnico asignado. El cliente fue notificado.');
+        this.toast.success('Técnico asignado. El incidente pasó a "En camino".');
         this.asignandoTecnico.set(false);
         this.cerrarModal();
         this.refrescar();
@@ -209,44 +202,12 @@ export class OrdenesComponent implements OnDestroy {
     });
   }
 
-  // ── Actualizar estado ─────────────────────────────────────────────────────
-
-  avanzarEstado(inc: Incidente): void {
-    const siguiente = this.ESTADOS_AVANZAR[inc.estado];
-    if (!siguiente) return;
-    const eMeta = this.estadoMeta[siguiente];
-    const ref = this.dialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(
-      ConfirmDialogComponent,
-      { data: {
-          titulo:  `Cambiar estado a "${eMeta.label}"`,
-          mensaje: `¿Confirmas el cambio de estado del incidente a "${eMeta.label}"?`,
-          accion:  `Cambiar a ${eMeta.label}`,
-        },
-      },
-    );
-    ref.afterClosed().subscribe(ok => {
-      if (!ok) return;
-      this.accionando.set(inc.id);
-      this.incidenteSvc.actualizarEstado(inc.id, siguiente).subscribe({
-        next: updated => {
-          this.ordenes.update(list => list.map(o => o.id === updated.id ? updated : o));
-          this.toast.success(`Estado actualizado a "${eMeta.label}"`);
-          this.accionando.set(null);
-        },
-        error: () => {
-          this.toast.error('No se pudo actualizar el estado.');
-          this.accionando.set(null);
-        },
-      });
-    });
-  }
-
   // ── Pago: solo lectura del estado (el técnico fija el monto) ─────────────
 
-  /** Carga el estado de pago de las órdenes atendidas. */
+  /** Carga el estado de pago de las órdenes finalizadas. */
   cargarEstadosPago(ordenes: Incidente[]): void {
-    const atendidas = ordenes.filter(o => o.estado === 'atendido');
-    atendidas.forEach(inc => {
+    const finalizadas = ordenes.filter(o => o.estado === 'finalizado');
+    finalizadas.forEach(inc => {
       this.pagoSvc.getPago(inc.id).subscribe({
         next:  pago => this.pagos.update(m => ({ ...m, [inc.id]: pago })),
         error: ()   => this.pagos.update(m => ({ ...m, [inc.id]: null })),
@@ -268,7 +229,6 @@ export class OrdenesComponent implements OnDestroy {
       this.chatAbierto.set(incidenteId);
       this.chatSvc.connect(incidenteId);
       this.chatInput = '';
-      // Limpiar badge al abrir el chat
       this.noLeidos.update(m => ({ ...m, [incidenteId]: 0 }));
     }
   }
@@ -296,6 +256,29 @@ export class OrdenesComponent implements OnDestroy {
     return inc.asignaciones.find(a => a.accion_taller === 'aceptado' && !a.tecnico_id);
   }
 
+  /** Índice del paso actual en FLUJO_PASOS, o -1 si el estado no aplica. */
+  pasoActual(estado: EstadoIncidente): number {
+    return this.flujoPasos.findIndex(p => p.estado === estado);
+  }
+
+  /** Texto de qué espera el admin según el estado actual. */
+  esperandoAccion(inc: Incidente): string | null {
+    switch (inc.estado) {
+      case 'taller_asignado':
+        return 'Asigna un técnico para enviarlo al lugar.';
+      case 'en_camino':
+        return 'El técnico está en camino. Esperando que marque su llegada.';
+      case 'en_atencion':
+        return 'El técnico está atendiendo al cliente. Esperando que marque el servicio como finalizado.';
+      case 'finalizado':
+        return 'Servicio completado. Si el cliente ya pagó, verás el monto abajo.';
+      case 'cancelado':
+        return 'Incidente cancelado por el cliente.';
+      default:
+        return null;
+    }
+  }
+
   tecnicosDisponibles(): TecnicoConDistancia[] {
     const inc  = this.ordenSeleccionada();
     const lat0 = inc?.latitud ?? null;
@@ -312,7 +295,6 @@ export class OrdenesComponent implements OnDestroy {
         return { ...t, distKm, eta };
       })
       .sort((a, b) => {
-        // Primero los que están en turno ahora, luego por distancia
         if (a.disponible_ahora !== b.disponible_ahora) return a.disponible_ahora ? -1 : 1;
         if (a.distKm === null && b.distKm === null) return 0;
         if (a.distKm === null) return 1;

@@ -112,7 +112,7 @@ export class HistorialComponent implements OnDestroy {
   tasaExito(): string {
     const total = this.historial().length;
     if (total === 0) return '0';
-    return ((this.countEstado('atendido') / total) * 100).toFixed(0);
+    return ((this.countEstado('finalizado') / total) * 100).toFixed(0);
   }
 
   formatDuracion(min: number | null): string {

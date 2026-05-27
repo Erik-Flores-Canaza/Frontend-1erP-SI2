@@ -42,7 +42,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   navItems: NavItem[] = [
     { label: 'Dashboard',       icon: 'dashboard',            route: '/dashboard' },
-    { label: 'Solicitudes',     icon: 'inbox',                route: '/solicitudes' },
+    { label: 'Cotizar',         icon: 'request_quote',        route: '/solicitudes' },
     { label: 'Órdenes activas', icon: 'assignment_turned_in', route: '/ordenes' },
     { label: 'Mis Talleres',    icon: 'store',                route: '/talleres' },
     { label: 'Técnicos',        icon: 'engineering',          route: '/tecnicos' },

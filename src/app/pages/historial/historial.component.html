@@ -30,8 +30,8 @@
       <p class="text-xs text-app-muted mt-1">Total</p>
     </div>
     <div class="card text-center py-4">
-      <p class="text-2xl font-bold text-success">{{ countEstado('atendido') }}</p>
-      <p class="text-xs text-app-muted mt-1">Atendidos</p>
+      <p class="text-2xl font-bold text-success">{{ countEstado('finalizado') }}</p>
+      <p class="text-xs text-app-muted mt-1">Finalizados</p>
     </div>
     <div class="card text-center py-4">
       <p class="text-2xl font-bold text-error">{{ countEstado('cancelado') }}</p>
@@ -99,7 +99,7 @@
         @if (filtroClasificacion() || filtroDesde() || filtroHasta()) {
           Prueba ajustando los filtros de búsqueda.
         } @else {
-          Aquí aparecerán las emergencias que tu taller haya atendido o cancelado.
+          Aquí aparecerán las emergencias que tu taller haya finalizado o cancelado.
         }
       </p>
     </div>
@@ -169,11 +169,11 @@
               <!-- Estado -->
               <td class="px-4 py-3">
                 <span class="flex items-center gap-1 text-xs font-medium"
-                      [class.text-success]="item.estado_final === 'atendido'"
+                      [class.text-success]="item.estado_final === 'finalizado'"
                       [class.text-error]="item.estado_final === 'cancelado'"
-                      [class.text-app-muted]="item.estado_final !== 'atendido' && item.estado_final !== 'cancelado'">
+                      [class.text-app-muted]="item.estado_final !== 'finalizado' && item.estado_final !== 'cancelado'">
                   <span class="material-icons text-sm">
-                    {{ item.estado_final === 'atendido' ? 'check_circle' : 'cancel' }}
+                    {{ item.estado_final === 'finalizado' ? 'check_circle' : 'cancel' }}
                   </span>
                   <span class="capitalize">{{ item.estado_final }}</span>
                 </span>
@@ -186,7 +186,7 @@
                     <span class="material-icons text-sm">payments</span>
                     ${{ item.pago_monto_neto.toFixed(2) }}
                   </span>
-                } @else if (item.estado_final === 'atendido') {
+                } @else if (item.estado_final === 'finalizado') {
                   <span class="text-xs text-app-faint">Pendiente</span>
                 } @else {
                   <span class="text-xs text-app-faint">—</span>
@@ -233,7 +233,7 @@
                     <div>
                       <p class="text-app-faint font-semibold uppercase tracking-wide mb-1">Estado final</p>
                       <span class="capitalize font-medium"
-                            [class.text-success]="item.estado_final === 'atendido'"
+                            [class.text-success]="item.estado_final === 'finalizado'"
                             [class.text-error]="item.estado_final === 'cancelado'">
                         {{ item.estado_final }}
                       </span>
@@ -245,7 +245,7 @@
                         <span class="text-success font-semibold flex items-center gap-1">
                           <span class="material-icons text-sm">check_circle</span> Pagado
                         </span>
-                      } @else if (item.estado_final === 'atendido') {
+                      } @else if (item.estado_final === 'finalizado') {
                         <span class="text-app-muted">Pendiente de cobro</span>
                       } @else {
                         <span class="text-app-faint">—</span>
