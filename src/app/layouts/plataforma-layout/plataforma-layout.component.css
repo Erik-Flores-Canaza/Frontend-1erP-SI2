@@ -1,0 +1,32 @@
+/* Plataforma sidebar — acento violeta/cian para diferenciarlo del admin_tenant (índigo) */
+:host {
+  --pl-accent:     #a855f7;   /* violet-500 */
+  --pl-accent-dim: #7e22ce;   /* violet-700 */
+  --pl-bg:         #0d0a18;   /* aún más oscuro */
+  --pl-card:       #16112a;
+  --pl-border:     #3b2960;
+}
+
+.pl-sidebar {
+  background-color: var(--pl-bg);
+}
+
+.pl-accent-bg  { background-color: var(--pl-accent); }
+.pl-accent-text { color: var(--pl-accent); }
+
+.pl-nav-active {
+  background-color: var(--pl-accent) !important;
+  color: white !important;
+}
+
+.pl-nav-active .material-icons {
+  color: white !important;
+}
+
+.pl-nav-item {
+  text-decoration: none;
+}
+
+.border-pl-border {
+  border-color: var(--pl-border);
+}

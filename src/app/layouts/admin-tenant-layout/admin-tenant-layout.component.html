@@ -1,0 +1,95 @@
+<div class="app-shell flex h-screen overflow-hidden bg-app-bg">
+
+  <!-- ── Sidebar admin_tenant (acento índigo) ─────────────────────────────── -->
+  <aside
+    class="sa-sidebar flex flex-col border-r border-sa-border transition-all duration-300 ease-in-out flex-shrink-0"
+    [class.w-sidebar]="!collapsed()"
+    [class.w-sidebar-sm]="collapsed()"
+  >
+    <!-- Brand -->
+    <div class="flex items-center gap-3 px-4 border-b border-sa-border"
+         style="height: var(--header-h);">
+      <span class="flex-shrink-0 w-9 h-9 rounded-lg sa-accent-bg flex items-center justify-center">
+        <span class="material-icons text-white text-xl">admin_panel_settings</span>
+      </span>
+      @if (!collapsed()) {
+        <div class="overflow-hidden">
+          <div class="font-bold text-app-text leading-tight truncate">EmergVial</div>
+          <div class="text-xs sa-accent-text truncate font-medium">Admin Tenant</div>
+        </div>
+      }
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 py-4 overflow-y-auto">
+      @for (item of navItems; track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="sa-nav-active"
+          [matTooltip]="collapsed() ? item.label : ''"
+          matTooltipPosition="right"
+          class="sa-nav-item flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg
+                 text-app-muted hover:text-app-text hover:bg-app-elevated
+                 transition-colors duration-150 mb-0.5 no-underline"
+        >
+          <span class="material-icons text-xl flex-shrink-0">{{ item.icon }}</span>
+          @if (!collapsed()) {
+            <span class="text-sm font-medium truncate">{{ item.label }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <!-- Collapse toggle -->
+    <div class="border-t border-sa-border p-2">
+      <button
+        (click)="toggleSidebar()"
+        class="w-full flex items-center justify-center gap-2 py-2 rounded-lg
+               text-app-muted hover:text-app-text hover:bg-app-elevated
+               transition-colors duration-150"
+      >
+        <span class="material-icons text-xl">
+          {{ collapsed() ? 'chevron_right' : 'chevron_left' }}
+        </span>
+        @if (!collapsed()) {
+          <span class="text-xs font-medium">Colapsar</span>
+        }
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main area ───────────────────────────────────────────────────────── -->
+  <div class="flex flex-col flex-1 min-w-0">
+
+    <!-- Header -->
+    <header
+      class="flex items-center justify-between px-6 bg-app-card border-b border-sa-border flex-shrink-0"
+      style="height: var(--header-h);"
+    >
+      <div class="flex items-center gap-2">
+        <span class="material-icons sa-accent-text text-lg">shield</span>
+        <span class="font-semibold text-app-text text-sm">Panel del Tenant</span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block mr-1">
+          <div class="text-sm font-medium text-app-text">{{ user()?.nombre_completo }}</div>
+          <div class="text-xs sa-accent-text font-medium">Administrador del tenant</div>
+        </div>
+        <button
+          (click)="logout()"
+          class="flex items-center gap-1.5 text-app-muted hover:text-danger
+                 px-3 py-2 rounded-lg hover:bg-danger/10 transition-colors duration-150"
+        >
+          <span class="material-icons text-xl">logout</span>
+          <span class="text-sm font-medium hidden sm:inline">Salir</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 overflow-y-auto p-6">
+      <router-outlet />
+    </main>
+  </div>
+</div>

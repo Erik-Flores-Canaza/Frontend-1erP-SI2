@@ -1,4 +1,4 @@
-/* Superadmin sidebar — acento índigo/violeta para diferenciarlo del admin_taller */
+/* Admin tenant sidebar — acento índigo/violeta para diferenciarlo del admin_taller */
 :host {
   --sa-accent:     #6366f1;   /* indigo-500 */
   --sa-accent-dim: #4f46e5;   /* indigo-600 */

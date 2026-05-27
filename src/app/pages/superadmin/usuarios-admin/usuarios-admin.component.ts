@@ -24,7 +24,8 @@ export class UsuariosAdminComponent implements OnInit {
   accionando    = signal<string | null>(null); // id del usuario en proceso
   errorMsg      = signal('');
 
-  readonly roles = ['cliente', 'admin_taller', 'tecnico', 'superadmin'];
+  // Roles visibles para admin_tenant (su panel solo gestiona usuarios del propio tenant)
+  readonly roles = ['cliente', 'admin_taller', 'tecnico', 'admin_tenant'];
 
   usuariosFiltrados = computed(() => {
     let list = this.usuarios();
@@ -70,11 +71,13 @@ export class UsuariosAdminComponent implements OnInit {
   }
 
   rolBadge(nombre: string): string {
+    const indigoBadge = 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400';
     const map: Record<string, string> = {
-      cliente:     'badge-neutral',
-      admin_taller:'badge-warning',
-      tecnico:     'badge-success',
-      superadmin:  'text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400',
+      cliente:              'badge-neutral',
+      admin_taller:         'badge-warning',
+      tecnico:              'badge-success',
+      admin_tenant:         indigoBadge,
+      superadmin_plataforma: 'text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400',
     };
     return map[nombre] ?? 'badge-neutral';
   }

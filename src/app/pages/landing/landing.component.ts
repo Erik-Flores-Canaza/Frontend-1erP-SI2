@@ -7,6 +7,7 @@ import { MapPickerComponent, Coordenadas } from '../../shared/components/map-pic
 import { PhoneInputComponent } from '../../shared/components/phone-input/phone-input.component';
 
 type EnvioEstado = 'idle' | 'loading' | 'success' | 'error';
+type TipoSolicitud = 'taller' | 'tenant';
 
 @Component({
   selector: 'app-landing',
@@ -18,9 +19,12 @@ export class LandingComponent {
   private fb      = inject(FormBuilder);
   private landing = inject(LandingService);
 
-  envioEstado = signal<EnvioEstado>('idle');
-  errorMsg    = signal('');
+  // Estado UI: pestaña activa + estado del envío (compartido entre ambos forms)
+  tipoSolicitud = signal<TipoSolicitud>('taller');
+  envioEstado   = signal<EnvioEstado>('idle');
+  errorMsg      = signal('');
 
+  // CU-22 — Solicitud de taller individual
   form = this.fb.group({
     solicitante_nombre:   ['', [Validators.required, Validators.minLength(3)]],
     solicitante_correo:   ['', [Validators.required, Validators.email]],
@@ -32,13 +36,34 @@ export class LandingComponent {
     descripcion:          [''],
   });
 
+  // CU-29 — Solicitud de alta como red de talleres
+  formTenant = this.fb.group({
+    solicitante_nombre:   ['', [Validators.required, Validators.minLength(3)]],
+    solicitante_correo:   ['', [Validators.required, Validators.email]],
+    solicitante_telefono: [''],
+    nombre_red:           ['', [Validators.required, Validators.minLength(3)]],
+    descripcion:          [''],
+  });
+
   onCoordenadas(coords: Coordenadas): void {
     this.form.patchValue({ latitud: coords.lat, longitud: coords.lng });
   }
 
-  get nombre()      { return this.form.get('solicitante_nombre')!; }
-  get correo()      { return this.form.get('solicitante_correo')!; }
-  get nombreTaller(){ return this.form.get('nombre_taller')!; }
+  cambiarTipo(tipo: TipoSolicitud): void {
+    this.tipoSolicitud.set(tipo);
+    this.envioEstado.set('idle');
+    this.errorMsg.set('');
+  }
+
+  // ── Getters CU-22 ─────────────────────────────────────────────────────────
+  get nombre()       { return this.form.get('solicitante_nombre')!; }
+  get correo()       { return this.form.get('solicitante_correo')!; }
+  get nombreTaller() { return this.form.get('nombre_taller')!; }
+
+  // ── Getters CU-29 ─────────────────────────────────────────────────────────
+  get nombreT()       { return this.formTenant.get('solicitante_nombre')!; }
+  get correoT()       { return this.formTenant.get('solicitante_correo')!; }
+  get nombreRed()     { return this.formTenant.get('nombre_red')!; }
 
   readonly steps = [
     {
@@ -100,6 +125,28 @@ export class LandingComponent {
       direccion:            val.direccion ?? undefined,
       latitud:              val.latitud   ?? undefined,
       longitud:             val.longitud  ?? undefined,
+      descripcion:          val.descripcion ?? undefined,
+    }).subscribe({
+      next:  () => this.envioEstado.set('success'),
+      error: (e) => {
+        this.errorMsg.set(e?.error?.detail ?? 'Ocurrió un error. Intenta nuevamente.');
+        this.envioEstado.set('error');
+      },
+    });
+  }
+
+  onSubmitTenant(): void {
+    if (this.formTenant.invalid) {
+      this.formTenant.markAllAsTouched();
+      return;
+    }
+    this.envioEstado.set('loading');
+    const val = this.formTenant.value;
+    this.landing.enviarSolicitudTenant({
+      solicitante_nombre:   val.solicitante_nombre!,
+      solicitante_correo:   val.solicitante_correo!,
+      solicitante_telefono: val.solicitante_telefono ?? undefined,
+      nombre_red:           val.nombre_red!,
       descripcion:          val.descripcion ?? undefined,
     }).subscribe({
       next:  () => this.envioEstado.set('success'),

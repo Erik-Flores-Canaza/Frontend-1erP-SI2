@@ -4,11 +4,10 @@ import { map, catchError, of } from 'rxjs';
 import { AuthService } from './auth.service';
 
 /**
- * Guard del panel admin_taller. Si el usuario logueado es otro rol,
- * lo redirige al panel que le corresponde (admin_tenant → /admin-tenant,
- * superadmin_plataforma → /plataforma).
+ * Guard de rol admin_tenant (antes "superadmin", renombrado en Ciclo 4 / R1
+ * multi-tenant). Valida token + que el usuario sea admin del tenant.
  */
-export const authGuard: CanActivateFn = () => {
+export const adminTenantGuard: CanActivateFn = () => {
   const auth   = inject(AuthService);
   const router = inject(Router);
 
@@ -18,10 +17,9 @@ export const authGuard: CanActivateFn = () => {
 
   const check = () => {
     const rol = auth.currentUser()?.rol?.nombre;
-    if (rol === 'admin_taller') return true;
-    if (rol === 'admin_tenant') return router.createUrlTree(['/admin-tenant']);
+    if (rol === 'admin_tenant') return true;
     if (rol === 'superadmin_plataforma') return router.createUrlTree(['/plataforma']);
-    return router.createUrlTree(['/login']);
+    return router.createUrlTree(['/dashboard']);
   };
 
   if (auth.currentUser()) return check();

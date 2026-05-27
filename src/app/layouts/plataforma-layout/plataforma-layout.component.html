@@ -1,21 +1,21 @@
 <div class="app-shell flex h-screen overflow-hidden bg-app-bg">
 
-  <!-- ── Sidebar superadmin (acento índigo) ──────────────────────────────── -->
+  <!-- ── Sidebar superadmin_plataforma (acento violeta/cian) ──────────────── -->
   <aside
-    class="sa-sidebar flex flex-col border-r border-sa-border transition-all duration-300 ease-in-out flex-shrink-0"
+    class="pl-sidebar flex flex-col border-r border-pl-border transition-all duration-300 ease-in-out flex-shrink-0"
     [class.w-sidebar]="!collapsed()"
     [class.w-sidebar-sm]="collapsed()"
   >
     <!-- Brand -->
-    <div class="flex items-center gap-3 px-4 border-b border-sa-border"
+    <div class="flex items-center gap-3 px-4 border-b border-pl-border"
          style="height: var(--header-h);">
-      <span class="flex-shrink-0 w-9 h-9 rounded-lg sa-accent-bg flex items-center justify-center">
-        <span class="material-icons text-white text-xl">admin_panel_settings</span>
+      <span class="flex-shrink-0 w-9 h-9 rounded-lg pl-accent-bg flex items-center justify-center">
+        <span class="material-icons text-white text-xl">workspace_premium</span>
       </span>
       @if (!collapsed()) {
         <div class="overflow-hidden">
           <div class="font-bold text-app-text leading-tight truncate">EmergVial</div>
-          <div class="text-xs sa-accent-text truncate font-medium">Superadmin</div>
+          <div class="text-xs pl-accent-text truncate font-medium">Plataforma</div>
         </div>
       }
     </div>
@@ -25,10 +25,10 @@
       @for (item of navItems; track item.route) {
         <a
           [routerLink]="item.route"
-          routerLinkActive="sa-nav-active"
+          routerLinkActive="pl-nav-active"
           [matTooltip]="collapsed() ? item.label : ''"
           matTooltipPosition="right"
-          class="sa-nav-item flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg
+          class="pl-nav-item flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg
                  text-app-muted hover:text-app-text hover:bg-app-elevated
                  transition-colors duration-150 mb-0.5 no-underline"
         >
@@ -41,7 +41,7 @@
     </nav>
 
     <!-- Collapse toggle -->
-    <div class="border-t border-sa-border p-2">
+    <div class="border-t border-pl-border p-2">
       <button
         (click)="toggleSidebar()"
         class="w-full flex items-center justify-center gap-2 py-2 rounded-lg
@@ -63,18 +63,18 @@
 
     <!-- Header -->
     <header
-      class="flex items-center justify-between px-6 bg-app-card border-b border-sa-border flex-shrink-0"
+      class="flex items-center justify-between px-6 bg-app-card border-b border-pl-border flex-shrink-0"
       style="height: var(--header-h);"
     >
       <div class="flex items-center gap-2">
-        <span class="material-icons sa-accent-text text-lg">shield</span>
-        <span class="font-semibold text-app-text text-sm">Panel de Superadmin</span>
+        <span class="material-icons pl-accent-text text-lg">workspace_premium</span>
+        <span class="font-semibold text-app-text text-sm">Panel de Plataforma</span>
       </div>
 
       <div class="flex items-center gap-3">
         <div class="text-right hidden sm:block mr-1">
           <div class="text-sm font-medium text-app-text">{{ user()?.nombre_completo }}</div>
-          <div class="text-xs sa-accent-text font-medium">Superadministrador</div>
+          <div class="text-xs pl-accent-text font-medium">Superadmin de plataforma</div>
         </div>
         <button
           (click)="logout()"

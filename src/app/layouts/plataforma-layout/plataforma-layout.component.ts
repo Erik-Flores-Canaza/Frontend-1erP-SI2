@@ -7,13 +7,13 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
-  selector: 'app-superadmin-layout',
+  selector: 'app-plataforma-layout',
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatTooltipModule],
-  templateUrl: './superadmin-layout.component.html',
-  styleUrl: './superadmin-layout.component.css',
+  templateUrl: './plataforma-layout.component.html',
+  styleUrl: './plataforma-layout.component.css',
 })
-export class SuperadminLayoutComponent {
+export class PlataformaLayoutComponent {
   private auth   = inject(AuthService);
   private dialog = inject(MatDialog);
 
@@ -21,9 +21,8 @@ export class SuperadminLayoutComponent {
   user      = this.auth.currentUser;
 
   navItems = [
-    { label: 'Solicitudes',    icon: 'inbox',     route: '/superadmin/solicitudes' },
-    { label: 'Usuarios',       icon: 'people',    route: '/superadmin/usuarios' },
-    { label: 'Métricas',       icon: 'bar_chart', route: '/superadmin/metricas' },
+    { label: 'Tenants',             icon: 'domain',  route: '/plataforma/tenants' },
+    { label: 'Solicitudes de red',  icon: 'inbox',   route: '/plataforma/solicitudes-tenant' },
   ];
 
   toggleSidebar(): void { this.collapsed.update(v => !v); }

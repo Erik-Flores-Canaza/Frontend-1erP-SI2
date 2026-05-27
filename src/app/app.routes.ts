@@ -1,10 +1,11 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { superadminGuard } from './core/auth/superadmin.guard';
+import { adminTenantGuard } from './core/auth/admin-tenant.guard';
+import { plataformaGuard } from './core/auth/plataforma.guard';
 import { guestGuard } from './core/auth/guest.guard';
 
 export const routes: Routes = [
-  // ── Página pública (landing + formulario CU-22) ───────────────────────────
+  // ── Página pública (landing + formularios CU-22 / CU-29) ──────────────────
   {
     path: '',
     pathMatch: 'full',
@@ -21,14 +22,41 @@ export const routes: Routes = [
       import('./pages/login/login.component').then(m => m.LoginComponent),
   },
 
-  // ── Panel Superadmin (CU-23 / CU-24 / CU-25) ─────────────────────────────
+  // ── Panel Superadmin Plataforma (CU-28 / CU-29 revisión) ──────────────────
   {
-    path: 'superadmin',
+    path: 'plataforma',
     loadComponent: () =>
-      import('./layouts/superadmin-layout/superadmin-layout.component').then(
-        m => m.SuperadminLayoutComponent,
+      import('./layouts/plataforma-layout/plataforma-layout.component').then(
+        m => m.PlataformaLayoutComponent,
       ),
-    canActivate: [superadminGuard],
+    canActivate: [plataformaGuard],
+    children: [
+      { path: '', redirectTo: 'tenants', pathMatch: 'full' },
+      {
+        path: 'tenants',
+        loadComponent: () =>
+          import('./pages/plataforma/tenants/tenants.component').then(
+            m => m.TenantsComponent,
+          ),
+      },
+      {
+        path: 'solicitudes-tenant',
+        loadComponent: () =>
+          import('./pages/plataforma/solicitudes-tenant/solicitudes-tenant.component').then(
+            m => m.SolicitudesTenantComponent,
+          ),
+      },
+    ],
+  },
+
+  // ── Panel Admin Tenant (CU-23 / CU-24 / CU-25 — scoped al tenant) ─────────
+  {
+    path: 'admin-tenant',
+    loadComponent: () =>
+      import('./layouts/admin-tenant-layout/admin-tenant-layout.component').then(
+        m => m.AdminTenantLayoutComponent,
+      ),
+    canActivate: [adminTenantGuard],
     children: [
       { path: '', redirectTo: 'solicitudes', pathMatch: 'full' },
       {

@@ -41,13 +41,19 @@ export class LoginComponent {
           next: (user) => {
             const rol = user.rol.nombre;
 
-            // Superadmin → panel superadmin
-            if (rol === 'superadmin') {
-              this.router.navigate(['/superadmin']);
+            // Superadmin de plataforma → panel /plataforma (CU-28/CU-29)
+            if (rol === 'superadmin_plataforma') {
+              this.router.navigate(['/plataforma']);
               return;
             }
 
-            // Admin taller → panel principal
+            // Admin del tenant → panel /admin-tenant (CU-23/24/25 scoped)
+            if (rol === 'admin_tenant') {
+              this.router.navigate(['/admin-tenant']);
+              return;
+            }
+
+            // Admin de taller → panel principal
             if (rol === 'admin_taller') {
               this.tallerSvc.loadMyTaller().subscribe({
                 next:     () => this.router.navigate(['/dashboard']),
@@ -60,7 +66,7 @@ export class LoginComponent {
             // Cualquier otro rol (cliente, tecnico) no tiene acceso a este panel
             this.auth.clearTokens();
             this.loading.set(false);
-            this.error.set('Este panel es exclusivo para administradores de taller y superadmin.');
+            this.error.set('Este panel es exclusivo para administradores de taller, del tenant o de la plataforma.');
           },
           error: () => {
             this.loading.set(false);

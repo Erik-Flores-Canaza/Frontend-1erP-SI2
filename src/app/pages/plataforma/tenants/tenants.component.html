@@ -1,0 +1,399 @@
+<div class="flex flex-col gap-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="page-title">Tenants</h1>
+      <p class="text-app-muted text-sm mt-1">Redes de talleres registradas en la plataforma (CU-28)</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button (click)="cargar()" class="btn-ghost flex items-center gap-2">
+        <span class="material-icons text-xl">refresh</span>
+        Actualizar
+      </button>
+      <button (click)="abrirCrear()" class="btn-primary flex items-center gap-2">
+        <span class="material-icons text-xl">add</span>
+        Nuevo tenant
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="card">
+      <p class="text-xs text-app-muted uppercase tracking-wider">Total</p>
+      <p class="text-2xl font-bold text-app-text mt-1">{{ tenants().length }}</p>
+    </div>
+    <div class="card">
+      <p class="text-xs text-app-muted uppercase tracking-wider">Activos</p>
+      <p class="text-2xl font-bold text-success mt-1">{{ totalActivos() }}</p>
+    </div>
+    <div class="card">
+      <p class="text-xs text-app-muted uppercase tracking-wider">Inactivos</p>
+      <p class="text-2xl font-bold text-danger mt-1">{{ totalInactivos() }}</p>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="flex flex-wrap gap-3">
+    <select [value]="filtroActivo()"
+            (change)="filtroActivo.set($any($event.target).value)"
+            class="input-field w-auto min-w-[140px]">
+      <option value="">Activos e inactivos</option>
+      <option value="true">Solo activos</option>
+      <option value="false">Solo inactivos</option>
+    </select>
+    <input type="text"
+           [value]="filtroBusq()"
+           (input)="filtroBusq.set($any($event.target).value)"
+           placeholder="Buscar por nombre, slug o correo..."
+           class="input-field flex-1 min-w-[200px]" />
+    <span class="flex items-center text-sm text-app-muted">
+      {{ tenantsFiltrados().length }} tenant(s)
+    </span>
+  </div>
+
+  <!-- Error -->
+  @if (errorMsg()) {
+    <div class="px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm">
+      {{ errorMsg() }}
+    </div>
+  }
+
+  <!-- Tabla -->
+  <div class="card p-0 overflow-hidden">
+    @if (loading()) {
+      <div class="p-6 flex flex-col gap-3">
+        @for (i of [1,2,3,4,5]; track i) {
+          <app-skeleton height="52px" />
+        }
+      </div>
+    } @else if (tenantsFiltrados().length === 0) {
+      <div class="py-16 text-center">
+        <span class="material-icons text-5xl text-app-faint">domain</span>
+        <p class="text-app-muted mt-3">No hay tenants con ese filtro</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Tenant</th>
+              <th>Slug</th>
+              <th>Contacto</th>
+              <th>Plan</th>
+              <th>Creado</th>
+              <th class="text-center">Estado</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of tenantsFiltrados(); track t.id) {
+              <tr>
+                <td>
+                  <div class="font-medium text-app-text">{{ t.nombre }}</div>
+                </td>
+                <td class="text-app-muted text-sm font-mono">{{ t.slug }}</td>
+                <td>
+                  <div class="text-sm text-app-text">{{ t.correo_contacto ?? '—' }}</div>
+                  @if (t.telefono_contacto) {
+                    <div class="text-xs text-app-muted">{{ t.telefono_contacto }}</div>
+                  }
+                </td>
+                <td>
+                  <span [class]="planBadge(t.plan)">{{ t.plan }}</span>
+                </td>
+                <td class="text-sm text-app-muted whitespace-nowrap">{{ fechaCorta(t.creado_en) }}</td>
+                <td class="text-center">
+                  @if (t.activo) {
+                    <span class="badge-success">Activo</span>
+                  } @else {
+                    <span class="badge-danger">Inactivo</span>
+                  }
+                </td>
+                <td class="text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      (click)="abrirEditar(t)"
+                      class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium
+                             bg-app-elevated text-app-muted border border-app-border
+                             hover:text-app-text transition-colors">
+                      <span class="material-icons text-sm">edit</span>
+                      Editar
+                    </button>
+                    <button
+                      (click)="toggleActivo(t)"
+                      [disabled]="accionando() === t.id"
+                      class="relative inline-flex items-center h-6 w-11 rounded-full
+                             transition-colors duration-200 focus:outline-none
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                      [class]="t.activo ? 'bg-success/30' : 'bg-app-elevated border border-app-border'"
+                      [title]="t.activo ? 'Desactivar tenant' : 'Activar tenant'"
+                    >
+                      <span
+                        class="inline-block w-4 h-4 rounded-full shadow transform transition-transform duration-200"
+                        [class]="t.activo
+                          ? 'translate-x-6 bg-success'
+                          : 'translate-x-1 bg-app-muted'"
+                      ></span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ══ MODAL CREAR TENANT ═══════════════════════════════════════════════════ -->
+@if (modalTipo() === 'crear') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+       (click)="cerrarModal()">
+    <div class="bg-app-card border border-app-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]"
+         (click)="$event.stopPropagation()">
+
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-app-border">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
+            <span class="material-icons text-violet-400">domain_add</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-app-text text-lg">Nuevo tenant</h3>
+            <p class="text-xs text-app-muted">Se crea el tenant + su primer admin en un solo paso</p>
+          </div>
+        </div>
+        <button (click)="cerrarModal()" class="text-app-muted hover:text-app-text transition-colors">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <form [formGroup]="crearForm" (ngSubmit)="confirmarCreacion()" class="overflow-y-auto px-6 py-5 flex flex-col gap-5">
+
+        <!-- Sección: Datos del tenant -->
+        <div>
+          <p class="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
+            Datos del tenant (red de talleres)
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="sm:col-span-2">
+              <label class="input-label">Nombre comercial <span class="text-danger">*</span></label>
+              <input formControlName="nombre"
+                     class="input-field"
+                     placeholder="Auxilio Vial Norte"
+                     (blur)="sugerirSlug()" />
+              @if (crearForm.get('nombre')?.invalid && crearForm.get('nombre')?.touched) {
+                <p class="text-xs text-danger mt-1">Ingresa un nombre (mínimo 2 caracteres)</p>
+              }
+            </div>
+            <div class="sm:col-span-2">
+              <label class="input-label">Slug <span class="text-danger">*</span></label>
+              <input formControlName="slug"
+                     class="input-field font-mono lowercase"
+                     placeholder="auxilio-vial-norte" />
+              <p class="text-xs text-app-muted mt-1">Identificador único en URLs. Solo minúsculas, números y guiones.</p>
+              @if (crearForm.get('slug')?.invalid && crearForm.get('slug')?.touched) {
+                <p class="text-xs text-danger mt-1">Solo a-z, 0-9 y guiones (sin guion al inicio o final)</p>
+              }
+            </div>
+            <div>
+              <label class="input-label">Correo de contacto</label>
+              <input formControlName="correo_contacto"
+                     type="email"
+                     class="input-field"
+                     placeholder="contacto@empresa.com" />
+            </div>
+            <div>
+              <label class="input-label">Teléfono</label>
+              <input formControlName="telefono_contacto"
+                     class="input-field"
+                     placeholder="+591 700 12345" />
+            </div>
+            <div>
+              <label class="input-label">Plan</label>
+              <select formControlName="plan" class="input-field">
+                @for (p of planes; track p) {
+                  <option [value]="p">{{ p }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección: Primer admin -->
+        <div>
+          <p class="text-xs font-semibold text-app-muted uppercase tracking-wider mb-3">
+            Primer admin del tenant
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="input-label">Nombre completo <span class="text-danger">*</span></label>
+              <input formControlName="admin_nombre_completo"
+                     class="input-field"
+                     placeholder="Juan Pérez" />
+            </div>
+            <div>
+              <label class="input-label">Correo <span class="text-danger">*</span></label>
+              <input formControlName="admin_correo"
+                     type="email"
+                     class="input-field"
+                     placeholder="admin@empresa.com" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="input-label">Contraseña temporal <span class="text-danger">*</span></label>
+              <div class="flex items-center gap-2">
+                <input formControlName="admin_contrasena"
+                       type="text"
+                       class="input-field font-mono flex-1"
+                       placeholder="Mínimo 6 caracteres" />
+                <button type="button"
+                        (click)="generarContrasena()"
+                        class="flex-shrink-0 px-3 py-2 rounded-lg border border-app-border
+                               text-app-muted hover:text-app-text hover:bg-app-elevated
+                               transition-colors text-xs font-medium">
+                  <span class="material-icons text-base align-middle">autorenew</span>
+                  Generar
+                </button>
+              </div>
+              <p class="text-xs text-app-muted mt-1">Compártela manualmente con el admin tras crear el tenant.</p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="input-label">Teléfono del admin</label>
+              <input formControlName="admin_telefono"
+                     class="input-field"
+                     placeholder="+591 700 67890" />
+            </div>
+          </div>
+        </div>
+
+        @if (errorAccion()) {
+          <div class="px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm">
+            {{ errorAccion() }}
+          </div>
+        }
+
+      </form>
+
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-app-border">
+        <button (click)="cerrarModal()" class="btn-ghost">Cancelar</button>
+        <button (click)="confirmarCreacion()"
+                class="btn-primary"
+                [disabled]="accionLoading()">
+          @if (accionLoading()) { Creando... } @else { Crear tenant }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ══ MODAL CREDENCIALES TRAS CREAR ════════════════════════════════════════ -->
+@if (modalTipo() === 'credenciales' && creadoResp()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div class="bg-app-card border border-app-border rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-10 h-10 rounded-xl bg-success/15 flex items-center justify-center">
+          <span class="material-icons text-success">task_alt</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-app-text">Tenant creado</h3>
+          <p class="text-xs text-app-muted">{{ creadoResp()!.tenant.nombre }}</p>
+        </div>
+      </div>
+
+      <p class="text-sm text-app-muted mb-4">
+        Credenciales para el primer admin
+        <strong class="text-app-text">{{ creadoResp()!.admin_correo }}</strong>:
+      </p>
+
+      <div class="mb-4">
+        <label class="input-label">Contraseña temporal</label>
+        <div class="flex items-center gap-2">
+          <input type="text"
+                 readonly
+                 [value]="creadoResp()!.contrasena_temporal ?? ''"
+                 class="input-field font-mono text-base flex-1 select-all" />
+          <button (click)="copiarContrasena()"
+                  class="flex-shrink-0 w-10 h-10 rounded-lg border border-app-border
+                         flex items-center justify-center text-app-muted
+                         hover:text-app-text hover:bg-app-elevated transition-colors"
+                  title="Copiar">
+            <span class="material-icons text-xl">{{ copiado() ? 'check' : 'content_copy' }}</span>
+          </button>
+        </div>
+        @if (copiado()) {
+          <p class="text-xs text-success mt-1">¡Copiado al portapapeles!</p>
+        }
+      </div>
+
+      <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 mb-4">
+        <span class="material-icons text-warning text-sm">info</span>
+        <p class="text-xs text-warning">Anota o comparte la contraseña antes de cerrar este diálogo — no se podrá recuperar después.</p>
+      </div>
+
+      <button (click)="cerrarModal()" class="btn-primary w-full">Entendido</button>
+    </div>
+  </div>
+}
+
+<!-- ══ MODAL EDITAR TENANT ══════════════════════════════════════════════════ -->
+@if (modalTipo() === 'editar' && tenantEdit()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+       (click)="cerrarModal()">
+    <div class="bg-app-card border border-app-border rounded-2xl w-full max-w-lg p-6 shadow-2xl"
+         (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center">
+            <span class="material-icons text-violet-400">edit</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-app-text">Editar tenant</h3>
+            <p class="text-xs text-app-muted font-mono">{{ tenantEdit()!.slug }}</p>
+          </div>
+        </div>
+        <button (click)="cerrarModal()" class="text-app-muted hover:text-app-text transition-colors">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <form [formGroup]="editarForm" (ngSubmit)="confirmarEdicion()" class="flex flex-col gap-4">
+        <div>
+          <label class="input-label">Nombre <span class="text-danger">*</span></label>
+          <input formControlName="nombre" class="input-field" />
+        </div>
+        <div>
+          <label class="input-label">Correo de contacto</label>
+          <input formControlName="correo_contacto" type="email" class="input-field" />
+        </div>
+        <div>
+          <label class="input-label">Teléfono</label>
+          <input formControlName="telefono_contacto" class="input-field" />
+        </div>
+        <div>
+          <label class="input-label">Plan</label>
+          <select formControlName="plan" class="input-field">
+            @for (p of planes; track p) {
+              <option [value]="p">{{ p }}</option>
+            }
+          </select>
+        </div>
+
+        @if (errorAccion()) {
+          <div class="px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-sm">
+            {{ errorAccion() }}
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-2 border-t border-app-border">
+          <button type="button" (click)="cerrarModal()" class="btn-ghost">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="accionLoading()">
+            @if (accionLoading()) { Guardando... } @else { Guardar cambios }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

@@ -162,12 +162,42 @@
     <div class="max-w-2xl mx-auto">
 
       <!-- Header -->
-      <div class="text-center mb-10">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">Registra tu taller</h2>
+      <div class="text-center mb-8">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Únete a la plataforma</h2>
         <p class="text-app-muted">
-          Completa el formulario y nuestro equipo revisará tu solicitud en 48 horas hábiles.
+          Elige cómo quieres registrarte. Revisamos cada solicitud en 48 horas hábiles.
         </p>
       </div>
+
+      <!-- ── TAB SWITCHER ── -->
+      @if (envioEstado() !== 'success') {
+        <div class="flex gap-2 p-1 rounded-xl bg-app-bg border border-app-border mb-6">
+          <button (click)="cambiarTipo('taller')"
+                  class="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors"
+                  [class]="tipoSolicitud() === 'taller'
+                    ? 'bg-accent text-white'
+                    : 'text-app-muted hover:text-app-text'">
+            <span class="material-icons text-base align-middle mr-1">store</span>
+            Mi taller (individual)
+          </button>
+          <button (click)="cambiarTipo('tenant')"
+                  class="flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors"
+                  [class]="tipoSolicitud() === 'tenant'
+                    ? 'bg-violet-500 text-white'
+                    : 'text-app-muted hover:text-app-text'">
+            <span class="material-icons text-base align-middle mr-1">domain</span>
+            Red de talleres
+          </button>
+        </div>
+
+        <p class="text-center text-xs text-app-muted mb-6">
+          @if (tipoSolicitud() === 'taller') {
+            Para una sola sucursal. Se registra dentro de una red existente.
+          } @else {
+            Para empresas con varias sucursales. Creamos un tenant aislado solo para ti.
+          }
+        </p>
+      }
 
       <!-- ── SUCCESS STATE ── -->
       @if (envioEstado() === 'success') {
@@ -183,8 +213,8 @@
         </div>
       }
 
-      <!-- ── FORM ── -->
-      @if (envioEstado() !== 'success') {
+      <!-- ── FORM CU-22: TALLER INDIVIDUAL ── -->
+      @if (envioEstado() !== 'success' && tipoSolicitud() === 'taller') {
         <form [formGroup]="form" (ngSubmit)="onSubmit()" class="card flex flex-col gap-5">
 
           <!-- Datos personales -->
@@ -297,6 +327,110 @@
 
           <p class="text-center text-xs text-app-muted">
             Al enviar, aceptas que nuestro equipo revise tu información para aprobar el registro.
+          </p>
+        </form>
+      }
+
+      <!-- ── FORM CU-29: RED DE TALLERES (TENANT) ── -->
+      @if (envioEstado() !== 'success' && tipoSolicitud() === 'tenant') {
+        <form [formGroup]="formTenant" (ngSubmit)="onSubmitTenant()" class="card flex flex-col gap-5">
+
+          <!-- Datos del solicitante -->
+          <div class="pb-2 border-b border-app-border">
+            <p class="text-xs font-semibold text-app-muted uppercase tracking-wider">
+              Datos del solicitante
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="input-label">Nombre completo <span class="text-danger">*</span></label>
+              <input formControlName="solicitante_nombre"
+                     class="input-field"
+                     placeholder="Juan Pérez"
+                     [class.border-danger]="nombreT.invalid && nombreT.touched" />
+              @if (nombreT.invalid && nombreT.touched) {
+                <p class="text-xs text-danger mt-1">Ingresa tu nombre completo</p>
+              }
+            </div>
+            <div>
+              <label class="input-label">Correo electrónico <span class="text-danger">*</span></label>
+              <input formControlName="solicitante_correo"
+                     type="email"
+                     class="input-field"
+                     placeholder="empresa@ejemplo.com"
+                     [class.border-danger]="correoT.invalid && correoT.touched" />
+              @if (correoT.invalid && correoT.touched) {
+                <p class="text-xs text-danger mt-1">Ingresa un correo válido</p>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="input-label">Teléfono</label>
+            <app-phone-input formControlName="solicitante_telefono" />
+          </div>
+
+          <!-- Datos de la red -->
+          <div class="pt-2 pb-2 border-b border-app-border">
+            <p class="text-xs font-semibold text-app-muted uppercase tracking-wider">
+              Datos de la red de talleres
+            </p>
+          </div>
+
+          <div>
+            <label class="input-label">Nombre comercial de la red <span class="text-danger">*</span></label>
+            <input formControlName="nombre_red"
+                   class="input-field"
+                   placeholder="Auxilio Vial Express"
+                   [class.border-danger]="nombreRed.invalid && nombreRed.touched" />
+            @if (nombreRed.invalid && nombreRed.touched) {
+              <p class="text-xs text-danger mt-1">Ingresa el nombre de tu red</p>
+            }
+          </div>
+
+          <div>
+            <label class="input-label">Descripción</label>
+            <textarea formControlName="descripcion"
+                      class="input-field resize-none"
+                      rows="4"
+                      placeholder="Cuéntanos sobre tu red: cuántas sucursales tienes, en qué ciudades operan, qué servicios ofrecen, etc."></textarea>
+          </div>
+
+          <div class="rounded-lg bg-violet-500/10 border border-violet-500/30 px-4 py-3 flex gap-3">
+            <span class="material-icons text-violet-400 text-base mt-0.5">info</span>
+            <div>
+              <p class="text-sm text-violet-300 font-medium">¿Qué obtienes al ser tenant?</p>
+              <ul class="text-xs text-app-muted mt-1 space-y-0.5 list-disc list-inside">
+                <li>Panel exclusivo para administrar tus sucursales y técnicos</li>
+                <li>Datos aislados del resto de redes en la plataforma</li>
+                <li>Métricas, SLA y reportes propios</li>
+              </ul>
+            </div>
+          </div>
+
+          @if (envioEstado() === 'error') {
+            <div class="flex items-center gap-2 px-4 py-3 rounded-lg bg-danger/10 border border-danger/30">
+              <span class="material-icons text-danger text-lg">error</span>
+              <p class="text-sm text-danger">{{ errorMsg() }}</p>
+            </div>
+          }
+
+          <button type="submit"
+                  class="bg-violet-500 hover:bg-violet-600 text-white py-3.5 rounded-xl text-base font-semibold transition-colors disabled:opacity-50"
+                  [disabled]="envioEstado() === 'loading'">
+            @if (envioEstado() === 'loading') {
+              <span class="flex items-center justify-center gap-2">
+                <span class="material-icons animate-spin text-xl">sync</span>
+                Enviando...
+              </span>
+            } @else {
+              Solicitar alta como red
+            }
+          </button>
+
+          <p class="text-center text-xs text-app-muted">
+            Al aprobar tu solicitud crearemos tu tenant + cuenta de admin con una contraseña temporal.
           </p>
         </form>
       }
