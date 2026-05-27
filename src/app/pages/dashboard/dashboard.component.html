@@ -45,18 +45,20 @@
       </div>
     }
   } @else {
-    <!-- Solicitudes pendientes — NUEVO -->
+    <!-- Cotizaciones pendientes (CU-34) -->
     <a routerLink="/solicitudes"
        class="card flex items-start gap-3 no-underline cursor-pointer hover:border-accent/40 transition-colors group">
       <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-        <span class="material-icons text-accent text-xl">inbox</span>
+        <span class="material-icons text-accent text-xl">request_quote</span>
       </div>
       <div>
-        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Solicitudes</p>
-        <p class="text-2xl font-bold text-app-text font-mono">{{ solicitudesPendientes() }}</p>
-        <p class="text-app-muted text-xs mt-1">pendientes de respuesta</p>
+        <p class="text-app-muted text-xs font-medium uppercase tracking-wider mb-1">Cotizar</p>
+        <p class="text-2xl font-bold text-app-text font-mono">{{ cotizacionesPendientes() }}</p>
+        <p class="text-app-muted text-xs mt-1">
+          esperando cotización@if (yaCotizadas() > 0) { <span class="text-success"> · {{ yaCotizadas() }} ya enviada(s)</span> }
+        </p>
       </div>
-      @if (solicitudesPendientes() > 0) {
+      @if (cotizacionesPendientes() > 0) {
         <span class="ml-auto w-2 h-2 rounded-full bg-accent animate-pulse flex-shrink-0 mt-1"></span>
       }
     </a>

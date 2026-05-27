@@ -118,9 +118,24 @@ export class MetricasAdminComponent implements OnInit, AfterViewInit, OnDestroy 
   private buildDonutChart(m: MetricasGlobales): void {
     this.donutChart?.destroy();
     if (!this.donutCanvas?.nativeElement) return;
+
+    // Para admin_tenant, los roles `cliente` y `superadmin_plataforma` son
+    // cross-tenant (tenant_id NULL) y siempre vienen en 0; los ocultamos del
+    // donut para no llenar la leyenda de categorías vacías.
+    const ROLES_CROSS_TENANT = new Set(['cliente', 'superadmin_plataforma']);
+    const ROL_LABEL: Record<string, string> = {
+      admin_taller: 'Admin de taller',
+      tecnico:      'Técnicos',
+      admin_tenant: 'Admin del tenant',
+      cliente:      'Clientes',
+      superadmin_plataforma: 'Superadmin plataforma',
+    };
+
     const rolesData = m.usuarios.por_rol;
-    const labels = Object.keys(rolesData);
-    const data   = Object.values(rolesData).map(v => v ?? 0);
+    const entradas = Object.entries(rolesData)
+      .filter(([rol, count]) => (count ?? 0) > 0 && !ROLES_CROSS_TENANT.has(rol));
+    const labels = entradas.map(([rol]) => ROL_LABEL[rol] ?? rol);
+    const data   = entradas.map(([, count]) => count ?? 0);
     if (!labels.length) return;
 
     const COLORS = ['#6366f1', '#E63946', '#F4A261', '#3FB950'];

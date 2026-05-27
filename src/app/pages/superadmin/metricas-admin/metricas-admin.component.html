@@ -3,8 +3,8 @@
   <!-- Header + filtro fechas -->
   <div class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <h1 class="page-title">Métricas globales</h1>
-      <p class="text-app-muted text-sm mt-1">Indicadores de toda la plataforma</p>
+      <h1 class="page-title">Métricas del tenant</h1>
+      <p class="text-app-muted text-sm mt-1">Indicadores de tu red de talleres</p>
     </div>
 
     <!-- Date range filter -->
@@ -62,15 +62,15 @@
         <p class="text-xs text-app-muted mt-1">{{ m.talleres.aprobados }} aprobados</p>
       </div>
 
-      <!-- Usuarios activos -->
+      <!-- Usuarios activos (del tenant: admin_taller + tecnico + admin_tenant) -->
       <div class="card">
         <div class="flex items-center gap-3 mb-2">
           <span class="material-icons text-orange">people</span>
-          <span class="text-xs text-app-muted">Usuarios activos</span>
+          <span class="text-xs text-app-muted">Usuarios del tenant</span>
         </div>
         <p class="text-3xl font-bold text-app-text">{{ m.usuarios.activos_total }}</p>
         <p class="text-xs text-app-muted mt-1">
-          Clientes: {{ m.usuarios.por_rol['cliente'] ?? 0 }}
+          Técnicos: {{ m.usuarios.por_rol['tecnico'] ?? 0 }}
         </p>
       </div>
 
@@ -121,13 +121,16 @@
         }
       </div>
 
-      <!-- Usuarios por rol (donut) -->
+      <!-- Usuarios por rol del tenant (donut) -->
       <div class="card">
-        <h3 class="section-title mb-4">Usuarios activos por rol</h3>
+        <h3 class="section-title mb-4">Usuarios del tenant por rol</h3>
         @if (m.usuarios.activos_total > 0) {
           <div class="relative" style="height: 260px;">
             <canvas #donutCanvas></canvas>
           </div>
+          <p class="text-xs text-app-faint mt-2 text-center">
+            Excluye clientes y superadmins de plataforma (ambos son globales)
+          </p>
         } @else {
           <div class="py-10 text-center text-app-muted text-sm">Sin usuarios activos</div>
         }
