@@ -22,6 +22,10 @@ export class WsNotificacionService implements OnDestroy {
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private intentos = 0;
   private readonly MAX_INTENTOS = 5;
+  /** True si la próxima apertura del socket es una reconexión, no la primera conexión.
+   *  Lo usamos para resincronizar el contador con la BD y no perder lo recibido
+   *  durante la ventana sin WS. */
+  private esReconexion = false;
 
   private _mensajes$ = new Subject<WsMensaje>();
   /** Stream de mensajes WS recibidos. Útil para que componentes reaccionen a eventos específicos. */
@@ -40,6 +44,11 @@ export class WsNotificacionService implements OnDestroy {
 
     this.ws.onopen = () => {
       this.intentos = 0;
+      if (this.esReconexion) {
+        // Resync con la BD: trae lo que llegó mientras estábamos desconectados.
+        this.notifSvc.refrescarContador();
+        this.esReconexion = false;
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -72,6 +81,7 @@ export class WsNotificacionService implements OnDestroy {
   disconnect(): void {
     clearTimeout(this.reconnectTimer);
     this.intentos = this.MAX_INTENTOS; // evitar reconexión
+    this.esReconexion = false;
     this.ws?.close();
     this.ws = undefined;
   }
@@ -81,6 +91,7 @@ export class WsNotificacionService implements OnDestroy {
     if (!this.auth.getAccessToken()) return;
     const delay = Math.min(1000 * 2 ** this.intentos, 30_000);
     this.intentos++;
+    this.esReconexion = true;
     this.reconnectTimer = setTimeout(() => this.connect(), delay);
   }
 
