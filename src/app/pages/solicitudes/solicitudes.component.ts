@@ -6,8 +6,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { interval, Subscription } from 'rxjs';
-import { switchMap, startWith } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 import { TallerContextService }  from '../../core/services/taller-context.service';
 import { CotizacionService }     from '../../core/services/cotizacion.service';
@@ -24,9 +23,6 @@ import {
   PRIORIDAD_META, CLASIFICACION_META, ClasificacionIA, PrioridadIncidente,
 } from '../../core/models/incidente.model';
 import { IncidentePendienteParaCotizar, CotizacionCreate } from '../../core/models/cotizacion.model';
-
-// Poll cada 30s — los incidentes en buscando_taller cambian rápido (TTL 15 min)
-const POLL_INTERVAL_MS = 30_000;
 
 @Component({
   selector: 'app-solicitudes',
@@ -59,7 +55,6 @@ export class SolicitudesComponent implements OnDestroy {
     observaciones:         ['', [Validators.maxLength(1000)]],
   });
 
-  private pollSub?: Subscription;
   private wsSub?:  Subscription;
   private tallerId = '';
 
@@ -72,10 +67,10 @@ export class SolicitudesComponent implements OnDestroy {
       if (t) {
         untracked(() => {
           this.tallerId = t.id;
-          this.pollSub?.unsubscribe();
+          this.wsSub?.unsubscribe();
           this.loading.set(true);
           this.pendientes.set([]);
-          this.startPolling();
+          this.iniciar();
         });
       } else if (this.tallerCtx.sinTalleres()) {
         this.loading.set(false);
@@ -84,32 +79,16 @@ export class SolicitudesComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.pollSub?.unsubscribe();
     this.wsSub?.unsubscribe();
   }
 
-  private startPolling(): void {
-    this.pollSub = interval(POLL_INTERVAL_MS)
-      .pipe(
-        startWith(0),
-        switchMap(() => {
-          if (!this.loading()) this.actualizando.set(true);
-          return this.cotizSvc.getPendientes(this.tallerId);
-        }),
-      )
-      .subscribe({
-        next: lista => {
-          this.pendientes.set(lista);
-          this.loading.set(false);
-          this.actualizando.set(false);
-        },
-        error: () => {
-          this.loading.set(false);
-          this.actualizando.set(false);
-        },
-      });
+  private iniciar(): void {
+    // 1) Carga inicial: traer los incidentes que ya están en buscando_taller.
+    this.refrescar();
 
-    // Refresh inmediato cuando llega un nuevo incidente para cotizar
+    // 2) Push: cualquier nueva solicitud para cotizar dispara una recarga.
+    //    Sin polling — el backend notifica vía WS cuando un incidente entra a
+    //    buscando_taller y este taller es candidato.
     this.wsSub = this.wsNotif.mensajes$.subscribe(msg => {
       if (msg.evento === 'nueva_solicitud' || msg.evento === 'solicitud_cotizacion') {
         this.refrescar();
@@ -120,8 +99,15 @@ export class SolicitudesComponent implements OnDestroy {
   refrescar(): void {
     this.actualizando.set(true);
     this.cotizSvc.getPendientes(this.tallerId).subscribe({
-      next: lista => { this.pendientes.set(lista); this.actualizando.set(false); },
-      error: ()    => this.actualizando.set(false),
+      next: lista => {
+        this.pendientes.set(lista);
+        this.actualizando.set(false);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.actualizando.set(false);
+        this.loading.set(false);
+      },
     });
   }
 

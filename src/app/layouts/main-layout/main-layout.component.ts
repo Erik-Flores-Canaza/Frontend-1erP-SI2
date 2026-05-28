@@ -1,10 +1,8 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { interval, Subscription } from 'rxjs';
-import { startWith } from 'rxjs/operators';
 import { AuthService }           from '../../core/auth/auth.service';
 import { TallerService }         from '../../core/services/taller.service';
 import { TallerContextService }  from '../../core/services/taller-context.service';
@@ -23,7 +21,7 @@ interface NavItem { label: string; icon: string; route: string; }
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })
-export class MainLayoutComponent implements OnInit, OnDestroy {
+export class MainLayoutComponent implements OnInit {
   private auth        = inject(AuthService);
   readonly tallerSvc  = inject(TallerService);
   tallerCtx           = inject(TallerContextService);
@@ -53,8 +51,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     { label: 'Mi perfil',       icon: 'manage_accounts',      route: '/perfil' },
   ];
 
-  private pollSub?: Subscription;
-
   ngOnInit(): void {
     // Carga la lista de talleres en el contexto y sincroniza TallerService
     this.tallerCtx.cargarTalleres().subscribe({
@@ -70,14 +66,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       },
     });
 
-    this.pollSub = interval(30_000)
-      .pipe(startWith(0))
-      .subscribe(() => this.notifSvc.refrescarContador());
-
+    // Inicializa el contador con las pendientes actuales del backend (one-shot).
+    // De ahí en adelante, el WebSocket es la única fuente de actualizaciones.
+    this.notifSvc.refrescarContador();
     this.wsNotif.connect();
   }
-
-  ngOnDestroy(): void { this.pollSub?.unsubscribe(); }
 
   toggleSidebar(): void { this.collapsed.update(v => !v); }
   toggleSelector(): void { this.selectorAbierto.update(v => !v); }
