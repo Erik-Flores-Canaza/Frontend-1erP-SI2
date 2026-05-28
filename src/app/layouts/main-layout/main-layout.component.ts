@@ -12,13 +12,14 @@ import { NotificacionService }   from '../../core/services/notificacion.service'
 import { WsNotificacionService } from '../../core/services/ws-notificacion.service';
 import { Taller } from '../../core/models/taller.model';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { OfflineBannerComponent } from '../../shared/components/offline-banner/offline-banner.component';
 
 interface NavItem { label: string; icon: string; route: string; }
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatTooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatTooltipModule, OfflineBannerComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.css',
 })

@@ -5,11 +5,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../../core/auth/auth.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { OfflineBannerComponent } from '../../shared/components/offline-banner/offline-banner.component';
 
 @Component({
   selector: 'app-plataforma-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatTooltipModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatTooltipModule, OfflineBannerComponent],
   templateUrl: './plataforma-layout.component.html',
   styleUrl: './plataforma-layout.component.css',
 })

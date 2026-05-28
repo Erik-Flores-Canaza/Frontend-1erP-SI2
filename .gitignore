@@ -28,6 +28,9 @@ coverage/
 *.wav
 *.webp
 
+# Excepciones: assets del PWA que sí deben commitearse
+!public/icons/*.png
+
 # OS
 .DS_Store
 Thumbs.db
