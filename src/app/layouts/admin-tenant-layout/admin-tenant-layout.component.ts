@@ -21,9 +21,11 @@ export class AdminTenantLayoutComponent {
   user      = this.auth.currentUser;
 
   navItems = [
-    { label: 'Solicitudes', icon: 'inbox',     route: '/admin-tenant/solicitudes' },
-    { label: 'Usuarios',    icon: 'people',    route: '/admin-tenant/usuarios' },
-    { label: 'Métricas',    icon: 'bar_chart', route: '/admin-tenant/metricas' },
+    { label: 'Solicitudes', icon: 'inbox',      route: '/admin-tenant/solicitudes' },
+    { label: 'Usuarios',    icon: 'people',     route: '/admin-tenant/usuarios' },
+    { label: 'Métricas',    icon: 'bar_chart',  route: '/admin-tenant/metricas' },
+    { label: 'Indicadores', icon: 'query_stats', route: '/admin-tenant/indicadores' },
+    { label: 'Acuerdos',    icon: 'schedule',   route: '/admin-tenant/sla' },
   ];
 
   toggleSidebar(): void { this.collapsed.update(v => !v); }

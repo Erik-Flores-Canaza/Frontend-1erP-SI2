@@ -1,0 +1,240 @@
+<div class="flex flex-col gap-6">
+
+  <!-- Header + filtro de fechas -->
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="page-title">Indicadores operacionales</h1>
+      <p class="text-app-muted text-sm mt-1">
+        Tiempos, eficiencia y cumplimiento de los servicios atendidos por tu red.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-2">
+      <div>
+        <label class="input-label text-xs">Desde</label>
+        <input type="date" class="input-field text-sm py-2"
+               [value]="fechaInicio()"
+               (change)="fechaInicio.set(($any($event.target)).value)" />
+      </div>
+      <div>
+        <label class="input-label text-xs">Hasta</label>
+        <input type="date" class="input-field text-sm py-2"
+               [value]="fechaFin()"
+               (change)="fechaFin.set(($any($event.target)).value)" />
+      </div>
+      <button (click)="aplicarFiltro()" class="btn-primary py-2 px-4">Filtrar</button>
+      @if (fechaInicio() || fechaFin()) {
+        <button (click)="limpiarFiltro()" class="btn-ghost py-2 px-3">Limpiar</button>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      @for (i of [1,2,3,4]; track i) { <app-skeleton height="108px" /> }
+    </div>
+    <app-skeleton height="320px" />
+  }
+
+  @if (!loading() && kpis(); as k) {
+
+    <!-- KPI cards principales -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <!-- Tiempo promedio de asignación -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-indigo-400">assignment_turned_in</span>
+          <span class="text-xs text-app-muted">Tiempo promedio de asignación</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ formatMin(k.tiempo_promedio_asignacion_min) }}</p>
+        <p class="text-xs text-app-muted mt-1">Reporte → aceptación de cotización</p>
+      </div>
+
+      <!-- Tiempo promedio de llegada -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-orange">local_shipping</span>
+          <span class="text-xs text-app-muted">Tiempo promedio de llegada</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ formatMin(k.tiempo_promedio_llegada_min) }}</p>
+        <p class="text-xs text-app-muted mt-1">Asignación → llegada del técnico</p>
+      </div>
+
+      <!-- Casos atendidos -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-accent">warning</span>
+          <span class="text-xs text-app-muted">Casos en el período</span>
+        </div>
+        <p class="text-3xl font-bold text-app-text">{{ k.totales.incidentes }}</p>
+        <p class="text-xs text-app-muted mt-1">
+          {{ k.totales.cotizaciones_aceptadas }} con taller asignado
+        </p>
+      </div>
+
+      <!-- Cumplimiento SLA -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons" [class]="cumplimientoColor(k.cumplimiento_sla.porcentaje)">verified</span>
+          <span class="text-xs text-app-muted">Cumplimiento de acuerdos</span>
+        </div>
+        <p class="text-3xl font-bold" [class]="cumplimientoColor(k.cumplimiento_sla.porcentaje)">
+          {{ formatPct(k.cumplimiento_sla.porcentaje) }}
+        </p>
+        <p class="text-xs text-app-muted mt-1">
+          {{ k.cumplimiento_sla.cumplidos }} de {{ k.cumplimiento_sla.aplicables }} en el objetivo
+        </p>
+      </div>
+    </div>
+
+    <!-- Stats secundarios -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ k.casos_cancelados.cantidad }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Casos cancelados</p>
+      </div>
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ k.casos_cancelados.tasa_porcentaje.toFixed(1) }}%</p>
+        <p class="text-xs text-app-muted mt-0.5">Tasa de cancelación</p>
+      </div>
+      <div class="card py-3 text-center">
+        <p class="text-2xl font-bold text-app-text">{{ porTipoOrdenado().length }}</p>
+        <p class="text-xs text-app-muted mt-0.5">Tipos de emergencia atendidos</p>
+      </div>
+    </div>
+
+    @if (!hayDatos()) {
+      <div class="card py-12 text-center">
+        <span class="material-icons text-5xl text-app-faint">analytics</span>
+        <p class="text-app-muted mt-3">Aún no hay datos para mostrar.</p>
+        <p class="text-xs text-app-faint mt-1">Cuando ingresen emergencias podrás ver indicadores aquí.</p>
+      </div>
+    } @else {
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- KPI 3: Incidentes por tipo -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="section-title">Distribución por tipo</h3>
+            <span class="text-xs text-app-muted">{{ k.totales.incidentes }} casos</span>
+          </div>
+          <div class="relative" style="height: 260px;">
+            <canvas #barCanvas></canvas>
+          </div>
+        </div>
+
+        <!-- KPI 5: Zonas con más incidentes -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="section-title">Zonas con más casos</h3>
+            <span class="text-xs text-app-muted">Top {{ k.zonas_con_mas_incidentes.length }}</span>
+          </div>
+          @if (k.zonas_con_mas_incidentes.length === 0) {
+            <p class="text-app-muted text-sm py-10 text-center">Sin datos de ubicación</p>
+          } @else {
+            <ul class="flex flex-col gap-2">
+              @for (z of k.zonas_con_mas_incidentes; track $index) {
+                <li class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-app-elevated/50">
+                  <div class="flex items-center gap-2">
+                    <span class="material-icons text-app-muted text-sm">place</span>
+                    <span class="text-sm text-app-text">
+                      {{ z.latitud.toFixed(3) }}, {{ z.longitud.toFixed(3) }}
+                    </span>
+                  </div>
+                  <span class="text-sm font-semibold text-app-text">{{ z.incidentes }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <!-- KPI 4: Talleres más eficientes -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="section-title">Talleres más eficientes</h3>
+          <span class="text-xs text-app-muted">Menor tiempo de atención = mejor</span>
+        </div>
+        @if (k.talleres_mas_eficientes.length === 0) {
+          <p class="text-app-muted text-sm py-10 text-center">Aún no hay servicios completados</p>
+        } @else {
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="w-10">#</th>
+                  <th>Taller</th>
+                  <th class="text-right">Servicios completados</th>
+                  <th class="text-right">Tiempo promedio</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (t of k.talleres_mas_eficientes; track t.taller_id; let i = $index) {
+                  <tr>
+                    <td class="font-mono text-app-muted">{{ i + 1 }}</td>
+                    <td class="font-medium">{{ t.nombre }}</td>
+                    <td class="text-right">{{ t.incidentes_completados }}</td>
+                    <td class="text-right text-app-text">{{ formatMin(t.tiempo_promedio_min) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <!-- KPI 7: Cumplimiento detalle por tipo -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="section-title">Cumplimiento por tipo de servicio</h3>
+          <span class="text-xs text-app-muted">Casos completos comparados con el acuerdo</span>
+        </div>
+        @if (cumplimientoPorTipo().length === 0) {
+          <div class="py-10 text-center">
+            <p class="text-app-muted text-sm">
+              No hay tipos con acuerdo configurado y casos completos.
+            </p>
+            <p class="text-xs text-app-faint mt-1">
+              Configura los tiempos objetivo en <span class="text-app-text">Acuerdos de servicio</span>.
+            </p>
+          </div>
+        } @else {
+          <ul class="flex flex-col gap-4">
+            @for (c of cumplimientoPorTipo(); track c.tipo) {
+              <li>
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-sm font-medium text-app-text">{{ c.label }}</span>
+                  <span class="text-xs text-app-muted">
+                    {{ c.cumplidos }} / {{ c.aplicables }} en el objetivo
+                    @if (c.porcentaje !== null) {
+                      <span class="ml-2 font-semibold" [class]="cumplimientoColor(c.porcentaje)">
+                        {{ formatPct(c.porcentaje) }}
+                      </span>
+                    }
+                  </span>
+                </div>
+                <div class="h-2 w-full rounded-full bg-app-elevated overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-300"
+                       [class]="cumplimientoBarBg(c.porcentaje)"
+                       [style.width.%]="c.porcentaje ?? 0"></div>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    }
+
+  }
+
+  @if (!loading() && !kpis()) {
+    <div class="card py-16 text-center">
+      <span class="material-icons text-5xl text-app-faint">analytics</span>
+      <p class="text-app-muted mt-3">No se pudieron cargar los indicadores</p>
+      <button (click)="cargar()" class="btn-primary mt-4">Reintentar</button>
+    </div>
+  }
+
+</div>

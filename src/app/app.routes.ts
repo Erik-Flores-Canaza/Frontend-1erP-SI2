@@ -80,6 +80,16 @@ export const routes: Routes = [
             m => m.MetricasAdminComponent,
           ),
       },
+      {
+        path: 'sla',
+        loadComponent: () =>
+          import('./pages/admin-tenant/sla/sla.component').then(m => m.SlaComponent),
+      },
+      {
+        path: 'indicadores',
+        loadComponent: () =>
+          import('./pages/admin-tenant/kpis/kpis.component').then(m => m.KpisComponent),
+      },
     ],
   },
 

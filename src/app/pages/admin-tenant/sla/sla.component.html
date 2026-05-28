@@ -1,0 +1,145 @@
+<div class="flex flex-col gap-6">
+
+  <!-- Header -->
+  <div class="flex items-start justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="page-title">Acuerdos de servicio</h1>
+      <p class="text-app-muted text-sm mt-1">
+        Define los tiempos objetivo de respuesta y atención por cada tipo de emergencia.
+      </p>
+    </div>
+    @if (!loading()) {
+      <div class="flex items-center gap-2">
+        <span class="badge-neutral">{{ totalConfigurados() }} de {{ TIPOS_SERVICIO.length }} configurados</span>
+      </div>
+    }
+  </div>
+
+  <!-- Info banner -->
+  <div class="card py-4 px-5 flex items-start gap-3 bg-app-elevated/40">
+    <span class="material-icons text-indigo-400 mt-0.5">info</span>
+    <div class="text-sm text-app-muted leading-relaxed">
+      Los tiempos se miden en minutos desde que se crea la emergencia.
+      Un tipo sin tiempos configurados no participa del cálculo de cumplimiento en el panel de indicadores.
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="flex flex-col gap-4">
+      @for (i of [1,2,3,4,5]; track i) {
+        <app-skeleton height="148px" />
+      }
+    </div>
+  }
+
+  @if (!loading()) {
+    <div class="flex flex-col gap-4">
+      @for (f of filas(); track f.meta.tipo) {
+
+        <div class="card">
+          <!-- Cabecera del tipo -->
+          <div class="flex items-start justify-between gap-4 mb-5 flex-wrap">
+            <div class="flex items-start gap-3">
+              <div class="w-11 h-11 rounded-xl bg-app-elevated flex items-center justify-center">
+                <span class="material-icons" [class]="f.meta.color">{{ f.meta.icon }}</span>
+              </div>
+              <div>
+                <h3 class="section-title">{{ f.meta.nombre }}</h3>
+                <p class="text-xs text-app-muted mt-0.5">{{ f.meta.descripcion }}</p>
+              </div>
+            </div>
+
+            @if (f.configurado) {
+              <span class="badge-success">
+                <span class="material-icons text-xs">check_circle</span>
+                Configurado
+              </span>
+            } @else {
+              <span class="badge-warning">Sin configurar</span>
+            }
+          </div>
+
+          <!-- Inputs de tiempos -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="input-label text-xs flex items-center gap-1.5">
+                <span class="material-icons text-xs">assignment_turned_in</span>
+                Tiempo de asignación
+              </label>
+              <div class="relative">
+                <input type="number" min="1" max="1440"
+                       class="input-field pr-14"
+                       placeholder="ej. 5"
+                       [ngModel]="f.minutos_asignacion"
+                       (ngModelChange)="f.minutos_asignacion = $event">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-app-faint">min</span>
+              </div>
+              <p class="text-xs text-app-faint mt-1">Desde el reporte hasta aceptar la cotización.</p>
+            </div>
+
+            <div>
+              <label class="input-label text-xs flex items-center gap-1.5">
+                <span class="material-icons text-xs">local_shipping</span>
+                Tiempo de llegada
+              </label>
+              <div class="relative">
+                <input type="number" min="1" max="1440"
+                       class="input-field pr-14"
+                       placeholder="ej. 30"
+                       [ngModel]="f.minutos_llegada"
+                       (ngModelChange)="f.minutos_llegada = $event">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-app-faint">min</span>
+              </div>
+              <p class="text-xs text-app-faint mt-1">Desde la asignación hasta que el técnico llega al sitio.</p>
+            </div>
+
+            <div>
+              <label class="input-label text-xs flex items-center gap-1.5">
+                <span class="material-icons text-xs">task_alt</span>
+                Tiempo de resolución
+              </label>
+              <div class="relative">
+                <input type="number" min="1" max="1440"
+                       class="input-field pr-14"
+                       placeholder="ej. 120"
+                       [ngModel]="f.minutos_resolucion"
+                       (ngModelChange)="f.minutos_resolucion = $event">
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-app-faint">min</span>
+              </div>
+              <p class="text-xs text-app-faint mt-1">Desde el reporte hasta cerrar el servicio.</p>
+            </div>
+          </div>
+
+          @if (f.errorMsg) {
+            <div class="mt-4 px-3 py-2 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs">
+              {{ f.errorMsg }}
+            </div>
+          }
+
+          <!-- Acciones -->
+          <div class="flex items-center justify-end gap-2 mt-5">
+            @if (tieneCambios(f) && f.configurado) {
+              <button (click)="descartar(f)"
+                      [disabled]="f.guardando"
+                      class="btn-ghost text-sm">
+                Descartar cambios
+              </button>
+            }
+            <button (click)="guardar(f)"
+                    [disabled]="!esValido(f) || !tieneCambios(f) || f.guardando"
+                    class="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+              @if (f.guardando) {
+                <span class="material-icons text-base animate-spin">progress_activity</span>
+                Guardando…
+              } @else {
+                <span class="material-icons text-base">save</span>
+                {{ f.configurado ? 'Actualizar' : 'Guardar' }}
+              }
+            </button>
+          </div>
+        </div>
+
+      }
+    </div>
+  }
+</div>
