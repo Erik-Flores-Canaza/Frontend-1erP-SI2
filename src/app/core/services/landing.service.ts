@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { SolicitudRegistroCreate, SolicitudRegistro } from '../models/solicitud-registro.model';
+import { SolicitudRegistroCreate, SolicitudRegistro, RedPublica } from '../models/solicitud-registro.model';
 import {
   SolicitudTenant,
   SolicitudTenantCreate,
@@ -11,6 +11,11 @@ import {
 export class LandingService {
   private http = inject(HttpClient);
   private api  = environment.apiUrl;
+
+  /** CU-22 — Listar redes (tenants) activas para elegir al registrar el taller (público) */
+  listarRedes() {
+    return this.http.get<RedPublica[]>(`${this.api}/redes`);
+  }
 
   /** CU-22 — Enviar solicitud de registro de taller individual (público) */
   enviarSolicitud(body: SolicitudRegistroCreate) {

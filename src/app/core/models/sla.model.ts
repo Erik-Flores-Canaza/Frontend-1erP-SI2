@@ -59,4 +59,6 @@ export interface KpisDashboard {
     porcentaje: number | null;
     por_tipo: Record<string, KpiCumplimientoTipo>;
   };
+  // KPI #8 — aporte propio (CU-43)
+  satisfaccion: { promedio: number | null; total_resenas: number };
 }

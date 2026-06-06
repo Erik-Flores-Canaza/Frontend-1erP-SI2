@@ -264,10 +264,18 @@
         }
       </div>
 
-      <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 mb-4">
-        <span class="material-icons text-warning text-sm">info</span>
-        <p class="text-xs text-warning">Comparte la contraseña con el solicitante por correo. No volverá a mostrarse.</p>
-      </div>
+      <!-- Estado del correo (CU-29) -->
+      @if (aprobacionResp()?.correo_enviado) {
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30 mb-4">
+          <span class="material-icons text-success text-sm">mail</span>
+          <p class="text-xs text-success">Correo con credenciales enviado al solicitante.</p>
+        </div>
+      } @else {
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/30 mb-4">
+          <span class="material-icons text-warning text-sm">mail_outline</span>
+          <p class="text-xs text-warning">No se pudo enviar el correo — comparte la contraseña manualmente. No volverá a mostrarse.</p>
+        </div>
+      }
 
       <button (click)="cerrarModal()" class="btn-primary w-full">Entendido</button>
     </div>

@@ -9,8 +9,12 @@ import {
   Legend, LinearScale, Tooltip,
 } from 'chart.js';
 import { SlaService } from '../../../core/services/sla.service';
+import { ReportService } from '../../../core/services/report.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { SkeletonComponent } from '../../../shared/components/skeleton/skeleton.component';
 import { KpisDashboard } from '../../../core/models/sla.model';
+
+interface SeccionReporte { key: string; label: string; activa: boolean; }
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -38,12 +42,25 @@ const TIPO_LABEL: Record<string, string> = {
 export class KpisComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('barCanvas') barCanvas!: ElementRef<HTMLCanvasElement>;
 
-  private slaSvc = inject(SlaService);
+  private slaSvc    = inject(SlaService);
+  private reportSvc = inject(ReportService);
+  private toast     = inject(ToastService);
 
   loading      = signal(true);
   kpis         = signal<KpisDashboard | null>(null);
   fechaInicio  = signal('');
   fechaFin     = signal('');
+
+  // CU-44 — exportación de reporte
+  exportando   = signal(false);
+  secciones    = signal<SeccionReporte[]>([
+    { key: 'resumen',      label: 'Resumen',                 activa: true },
+    { key: 'por_tipo',     label: 'Incidentes por tipo',     activa: true },
+    { key: 'talleres',     label: 'Talleres más eficientes', activa: true },
+    { key: 'zonas',        label: 'Zonas con más incidentes', activa: true },
+    { key: 'sla',          label: 'Cumplimiento de SLA',     activa: true },
+    { key: 'satisfaccion', label: 'Satisfacción',            activa: true },
+  ]);
 
   private barChart?: Chart;
   private viewReady = false;
@@ -92,6 +109,44 @@ export class KpisComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   aplicarFiltro(): void { this.cargar(); }
+
+  toggleSeccion(key: string): void {
+    this.secciones.update(list =>
+      list.map(s => (s.key === key ? { ...s, activa: !s.activa } : s)),
+    );
+  }
+
+  /** CU-44 — descarga el reporte operacional en el formato elegido. */
+  exportar(formato: 'pdf' | 'excel' | 'html'): void {
+    const sel = this.secciones().filter(s => s.activa).map(s => s.key);
+    if (sel.length === 0) {
+      this.toast.error('Elige al menos una sección para el reporte');
+      return;
+    }
+    this.exportando.set(true);
+    this.reportSvc.descargarAdmin(
+      formato,
+      this.fechaInicio() || undefined,
+      this.fechaFin()    || undefined,
+      sel,
+    ).subscribe({
+      next: (blob: Blob) => {
+        const ext = formato === 'excel' ? 'xlsx' : formato;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte-operacional.${ext}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.exportando.set(false);
+        this.toast.success('Reporte generado');
+      },
+      error: () => {
+        this.exportando.set(false);
+        this.toast.error('No se pudo generar el reporte');
+      },
+    });
+  }
 
   limpiarFiltro(): void {
     this.fechaInicio.set('');

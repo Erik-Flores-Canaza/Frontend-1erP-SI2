@@ -263,6 +263,25 @@
             </p>
           </div>
 
+          <!-- Red de talleres a la que se une -->
+          <div>
+            <label class="input-label">Red de talleres <span class="text-danger">*</span></label>
+            <select formControlName="tenant_slug"
+                    class="input-field"
+                    [class.border-danger]="tenantSlug.invalid && tenantSlug.touched">
+              <option value="" disabled>Selecciona la red a la que perteneces</option>
+              @for (red of redes(); track red.slug) {
+                <option [value]="red.slug">{{ red.nombre }}</option>
+              }
+            </select>
+            @if (redes().length === 0) {
+              <p class="text-xs text-app-muted mt-1">No hay redes disponibles por ahora. Si administras una red nueva, usa la pestaña "Red de talleres".</p>
+            }
+            @if (tenantSlug.invalid && tenantSlug.touched) {
+              <p class="text-xs text-danger mt-1">Selecciona la red a la que quieres unir tu taller</p>
+            }
+          </div>
+
           <!-- Nombre taller -->
           <div>
             <label class="input-label">Nombre del taller <span class="text-danger">*</span></label>

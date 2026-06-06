@@ -7,6 +7,13 @@ export interface SolicitudRegistroCreate {
   latitud?: number;
   longitud?: number;
   descripcion?: string;
+  tenant_slug?: string;   // red a la que se quiere unir el taller (CU-22)
+}
+
+/** Red (tenant) activa para el selector del formulario público. */
+export interface RedPublica {
+  nombre: string;
+  slug: string;
 }
 
 export interface SolicitudRegistro {

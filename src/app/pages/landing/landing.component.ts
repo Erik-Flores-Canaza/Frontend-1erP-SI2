@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { LandingService } from '../../core/services/landing.service';
+import { RedPublica } from '../../core/models/solicitud-registro.model';
 import { MapPickerComponent, Coordenadas } from '../../shared/components/map-picker/map-picker.component';
 import { PhoneInputComponent } from '../../shared/components/phone-input/phone-input.component';
 
@@ -24,8 +25,12 @@ export class LandingComponent {
   envioEstado   = signal<EnvioEstado>('idle');
   errorMsg      = signal('');
 
+  // Redes (tenants) activas para el selector del formulario de taller
+  redes = signal<RedPublica[]>([]);
+
   // CU-22 — Solicitud de taller individual
   form = this.fb.group({
+    tenant_slug:          ['', [Validators.required]],
     solicitante_nombre:   ['', [Validators.required, Validators.minLength(3)]],
     solicitante_correo:   ['', [Validators.required, Validators.email]],
     solicitante_telefono: [''],
@@ -45,6 +50,14 @@ export class LandingComponent {
     descripcion:          [''],
   });
 
+  constructor() {
+    // Cargar las redes activas para el selector del formulario de taller (CU-22)
+    this.landing.listarRedes().subscribe({
+      next: (redes) => this.redes.set(redes),
+      error: () => this.redes.set([]),
+    });
+  }
+
   onCoordenadas(coords: Coordenadas): void {
     this.form.patchValue({ latitud: coords.lat, longitud: coords.lng });
   }
@@ -56,6 +69,7 @@ export class LandingComponent {
   }
 
   // ── Getters CU-22 ─────────────────────────────────────────────────────────
+  get tenantSlug()   { return this.form.get('tenant_slug')!; }
   get nombre()       { return this.form.get('solicitante_nombre')!; }
   get correo()       { return this.form.get('solicitante_correo')!; }
   get nombreTaller() { return this.form.get('nombre_taller')!; }
@@ -118,6 +132,7 @@ export class LandingComponent {
     this.envioEstado.set('loading');
     const val = this.form.value;
     this.landing.enviarSolicitud({
+      tenant_slug:          val.tenant_slug!,
       solicitante_nombre:   val.solicitante_nombre!,
       solicitante_correo:   val.solicitante_correo!,
       solicitante_telefono: val.solicitante_telefono ?? undefined,

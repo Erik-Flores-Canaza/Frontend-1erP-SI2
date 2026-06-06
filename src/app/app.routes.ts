@@ -90,6 +90,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/admin-tenant/kpis/kpis.component').then(m => m.KpisComponent),
       },
+      {
+        path: 'resenas',
+        loadComponent: () =>
+          import('./pages/admin-tenant/resenas/resenas.component').then(m => m.ResenasComponent),
+      },
     ],
   },
 

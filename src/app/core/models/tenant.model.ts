@@ -41,4 +41,5 @@ export interface TenantCreateResponse {
   tenant: Tenant;
   admin_correo: string;
   contrasena_temporal?: string | null;
+  correo_enviado?: boolean;   // si se envió el correo de credenciales (CU-29)
 }

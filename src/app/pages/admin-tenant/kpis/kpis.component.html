@@ -29,6 +29,45 @@
     </div>
   </div>
 
+  <!-- CU-44 — Exportar reporte personalizable (PDF / Excel / HTML) -->
+  <div class="card">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="material-icons text-indigo-400">description</span>
+      <h2 class="section-title">Exportar reporte</h2>
+    </div>
+    <p class="text-xs text-app-muted mb-3">
+      Usa el rango de fechas de arriba. Elige qué secciones incluir y el formato.
+    </p>
+
+    <div class="flex flex-wrap gap-2 mb-4">
+      @for (s of secciones(); track s.key) {
+        <button
+          class="badge-neutral"
+          [class.badge-success]="s.activa"
+          (click)="toggleSeccion(s.key)">
+          <span class="material-icons text-xs">{{ s.activa ? 'check' : 'add' }}</span>
+          {{ s.label }}
+        </button>
+      }
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-xs text-app-muted mr-1">Descargar como:</span>
+      <button class="btn-ghost" [disabled]="exportando()" (click)="exportar('pdf')">
+        <span class="material-icons text-base">picture_as_pdf</span> PDF
+      </button>
+      <button class="btn-ghost" [disabled]="exportando()" (click)="exportar('excel')">
+        <span class="material-icons text-base">table_view</span> Excel
+      </button>
+      <button class="btn-ghost" [disabled]="exportando()" (click)="exportar('html')">
+        <span class="material-icons text-base">html</span> HTML
+      </button>
+      @if (exportando()) {
+        <span class="text-xs text-app-muted">Generando…</span>
+      }
+    </div>
+  </div>
+
   @if (loading()) {
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       @for (i of [1,2,3,4]; track i) { <app-skeleton height="108px" /> }
@@ -84,6 +123,22 @@
         </p>
         <p class="text-xs text-app-muted mt-1">
           {{ k.cumplimiento_sla.cumplidos }} de {{ k.cumplimiento_sla.aplicables }} en el objetivo
+        </p>
+      </div>
+
+      <!-- Satisfacción promedio (CU-43) -->
+      <div class="card">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="material-icons text-amber-400">star</span>
+          <span class="text-xs text-app-muted">Satisfacción promedio</span>
+        </div>
+        <p class="text-3xl font-bold text-amber-400">
+          @if (k.satisfaccion.promedio !== null) {
+            {{ k.satisfaccion.promedio }} <span class="text-xl">★</span>
+          } @else { — }
+        </p>
+        <p class="text-xs text-app-muted mt-1">
+          {{ k.satisfaccion.total_resenas }} reseña(s) de clientes
         </p>
       </div>
     </div>
