@@ -123,4 +123,12 @@ export class TallerService {
   addServicio(tallerId: string, body: ServicioTallerCreate) {
     return this.http.post<ServicioTaller>(`${this.api}/talleres/${tallerId}/servicios`, body);
   }
+
+  /** Activa o desactiva un servicio existente del taller. */
+  setServicioDisponible(tallerId: string, servicioId: string, disponible: boolean) {
+    return this.http.patch<ServicioTaller>(
+      `${this.api}/talleres/${tallerId}/servicios/${servicioId}`,
+      { disponible },
+    );
+  }
 }

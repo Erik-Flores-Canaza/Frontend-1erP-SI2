@@ -140,13 +140,28 @@ export class TallerComponent implements OnInit {
     if (!t) return;
 
     const existente = this.servicios().find(s => s.tipo_servicio === tipo);
+
+    // Ya existe la fila: alternar su disponibilidad (activar/desactivar).
     if (existente) {
-      // Ya existe: no se puede desactivar con el endpoint actual (solo crear)
-      // En el Ciclo 2 se añadirá PATCH /talleres/{id}/servicios/{sid}
-      this.toast.info('Para desactivar un servicio usa el panel de administración.');
+      const nuevo = !existente.disponible;
+      this.savingServicio.set(tipo);
+      this.tallerSvc.setServicioDisponible(t.id, existente.id, nuevo).subscribe({
+        next: s => {
+          this.servicios.update(prev =>
+            prev.map(x => (x.id === s.id ? s : x)),
+          );
+          this.toast.success(`Servicio "${tipo}" ${nuevo ? 'activado' : 'desactivado'}.`);
+          this.savingServicio.set(null);
+        },
+        error: () => {
+          this.toast.error('No se pudo actualizar el servicio.');
+          this.savingServicio.set(null);
+        },
+      });
       return;
     }
 
+    // Primera vez: crear la fila del servicio.
     this.savingServicio.set(tipo);
     this.tallerSvc.addServicio(t.id, { tipo_servicio: tipo, disponible: true }).subscribe({
       next: s => {
